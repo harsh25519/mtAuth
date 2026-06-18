@@ -1,0 +1,61 @@
+auth_service/
+├── config/
+├── exception/
+├── security/
+│   ├── JwtUtil.java
+│   ├── JwtAuthenticationFilter.java
+│   ├── CustomUserDetails.java
+│   └── CustomOAuth2UserService.java
+├── user/
+│   ├── UserController.java
+│   ├── UserService.java
+│   ├── UserRepository.java
+│   ├── User.java
+│   └── dto/
+├── role/
+│   ├── UserRole.java
+│   ├── UserRoleRepository.java
+│   └── dto/
+├── client/
+│   ├── ClientController.java
+│   ├── ClientService.java
+│   ├── ClientRepository.java
+│   ├── Client.java
+│   └── dto/
+└── auth/
+    ├── AuthController.java
+    ├── AuthService.java
+    └── dto/
+
+
+    API:-
+
+    POST users/signup
+    -it will take the createUser dto, it will also take the role and add it to userRole
+    -open for all but clientSecret will be provided by backend of app using it
+
+    POST clients/register
+    -it will take registerClient dto
+    -it will be used only by users with client id of authService and developer role
+
+    POST users/login
+    -it will take login dto & it will return jwt token
+
+    GET users
+    -it will return all users along with their roles
+    -used by AUTH_ADMIN, as other app might have admin roles
+
+    GET clients
+    -it will return all clients
+    -used by AUTH_ADMIN
+
+    GET users/{client_id}
+    -it will return all users of a particular client
+    -used by admin of the same client
+
+
+
+
+
+
+
