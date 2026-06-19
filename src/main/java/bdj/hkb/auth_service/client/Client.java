@@ -28,6 +28,7 @@ public class Client {
     private String clientSecret;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @CreationTimestamp

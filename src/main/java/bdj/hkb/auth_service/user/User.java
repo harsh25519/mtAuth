@@ -42,6 +42,7 @@ public class User {
     private String providerId;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @CreationTimestamp
