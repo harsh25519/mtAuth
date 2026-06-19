@@ -5,7 +5,8 @@ auth_service/
 │   ├── JwtUtil.java
 │   ├── JwtAuthenticationFilter.java
 │   ├── CustomUserDetails.java
-│   └── CustomOAuth2UserService.java
+│   ├── CustomOAuth2UserService.java
+│   └── CustomUserDetailsService.java
 ├── user/
 │   ├── UserController.java
 │   ├── UserService.java

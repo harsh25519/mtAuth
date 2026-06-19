@@ -1,4 +1,4 @@
-package bdj.hkb.auth_service.user.dto;
+package bdj.hkb.auth_service.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
