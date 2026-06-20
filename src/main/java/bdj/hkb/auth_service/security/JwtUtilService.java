@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -18,20 +19,45 @@ public class JwtUtilService {
     @Value("${jwt.secret}")
     private String SECRET_KEY;
 
-    @Value("${jwt.expiration}")
-    private Long EXPIRATION_MS;
+    @Value("${jwt.access-expiration}")
+    private Long ACCESS_EXPIRATION_MS;
 
-    public String generateToken(String userId, String clientId, List<String> roles){
+    @Value("${jwt.refresh-expiration}")
+    private Long REFRESH_EXPIRATION_MS;
+
+    public String generateAccessToken(String userId, String clientId, List<String> roles){
         return Jwts.builder()
                 .claims()
                 .add("clientId", clientId)
                 .add("roles", roles)
+                .add("type", "access")
+                .id(UUID.randomUUID().toString())   // jti — unique per token
                 .subject(userId)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_EXPIRATION_MS))
                 .and()
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    // -------------------------------------------------------------------
+    // REFRESH TOKEN — new, minimal payload, longer expiry
+    // -------------------------------------------------------------------
+    public String generateRefreshToken(String userId) {
+        return Jwts.builder()
+                .claims()
+                .add("type", "refresh")
+                .id(UUID.randomUUID().toString())
+                .subject(userId)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_MS))
+                .and()
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
     }
 
     private SecretKey getSigningKey() {
@@ -79,8 +105,12 @@ public class JwtUtilService {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
+    }
+
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
     }
 
 }

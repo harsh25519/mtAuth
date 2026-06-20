@@ -22,6 +22,7 @@ import java.util.UUID;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtilService jwtUtilService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,6 +41,19 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (jwtUtilService.validateToken(jwt)
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                String jti = jwtUtilService.extractJti(jwt);
+
+                if (tokenBlacklistService.isBlacklisted(jti)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // Reject refresh tokens used as access tokens
+                if (!"access".equals(jwtUtilService.extractTokenType(jwt))) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 String userId = jwtUtilService.extractUserId(jwt);
                 String clientId = jwtUtilService.extractClientId(jwt);

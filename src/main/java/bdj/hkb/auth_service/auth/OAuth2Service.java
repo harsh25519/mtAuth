@@ -38,6 +38,7 @@ public class OAuth2Service {
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtilService jwtUtil;
+    private final AuthService authService;
 
     @Value("${google.client-id}")
     private String googleClientId;
@@ -94,14 +95,7 @@ public class OAuth2Service {
                 .map(UserRole::getRole)
                 .toList();
 
-        // Return local JWT
-        String token = jwtUtil.generateToken(
-                user.getId().toString(),
-                client.getId().toString(),
-                roles
-        );
-
-        return new AuthResponse(token, "Bearer");
+        return authService.issueTokens(user.getId().toString(), client.getId().toString(), roles);
     }
 
     // --- STRATEGY 1: GOOGLE ---
