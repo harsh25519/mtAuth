@@ -52,7 +52,8 @@ public class JwtFilter extends OncePerRequestFilter {
                 // If your record is: public record JwtPrincipal(UUID userId, UUID clientId) {}
                 JwtPrincipal principal = new JwtPrincipal(
                         UUID.fromString(userId),
-                        UUID.fromString(clientId)
+                        UUID.fromString(clientId),
+                        roles
                 );
 
                 UsernamePasswordAuthenticationToken authToken =

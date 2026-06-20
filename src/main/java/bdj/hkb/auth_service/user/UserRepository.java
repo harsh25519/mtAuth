@@ -27,4 +27,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @EntityGraph(attributePaths = {"client"})
     @Query("SELECT u FROM User u WHERE u.client.id = :clientId")
     Page<User> findByClientIdWithClient(@Param("clientId") UUID requestedClientId, Pageable pageable);
+
+    Optional<User> findByIdAndClientId(UUID id, UUID clientId);
 }

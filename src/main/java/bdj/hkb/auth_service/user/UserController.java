@@ -22,7 +22,7 @@ public class UserController {
 
     // --- 1. Master Platform Admin: Get ALL users across ALL tenants ---
     @GetMapping
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')") // Adjust roles based on your platform's master roles
+    @PreAuthorize("hasAuthority('ROLE_AUTH_ADMIN')") // Adjust roles based on your platform's master roles
     public ResponseEntity<Page<UserResponse>> getAllUsers(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(defaultValue = "0") int page,

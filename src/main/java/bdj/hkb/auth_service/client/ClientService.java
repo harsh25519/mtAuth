@@ -6,6 +6,8 @@ import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
 import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -61,15 +62,13 @@ public class ClientService {
         );
     }
 
-    public List<ClientResponse> getAllClients(){
-
-        return clientRepository.findAll().stream()
+    public Page<ClientResponse> getAllClients(Pageable pageable) {
+        return clientRepository.findAll(pageable)
                 .map(c -> new ClientResponse(
                         c.getId(),
                         c.getName(),
                         c.getIsActive(),
-                        c.getCreatedAt()))
-                .toList();
+                        c.getCreatedAt()));
     }
 
     public ClientResponse getActiveClientById(UUID clientId) {

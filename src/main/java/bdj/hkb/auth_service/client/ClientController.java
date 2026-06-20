@@ -6,12 +6,14 @@ import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
 import bdj.hkb.auth_service.security.JwtUtilService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,7 +25,7 @@ public class ClientController {
     private final JwtUtilService jwtUtilService;
 
     @PostMapping("/register")
-    @PreAuthorize("hasAnyRole('USER', 'DEVELOPER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<RegisterClientResponse> registerClient(
             @Valid @RequestBody RegisterClientRequest request,
             @RequestHeader("Authorization") String authHeader) {
@@ -55,8 +57,12 @@ public class ClientController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_AUTH_ADMIN')")
-    public ResponseEntity<List<ClientResponse>> getClients() {
-        List<ClientResponse> clients = clientService.getAllClients();
+    public ResponseEntity<Page<ClientResponse>> getClients(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClientResponse> clients = clientService.getAllClients(pageable);
         return ResponseEntity.ok(clients);
     }
 

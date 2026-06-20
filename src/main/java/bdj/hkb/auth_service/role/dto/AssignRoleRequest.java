@@ -5,12 +5,14 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
-public record UpdateUserRole(
-
-        @NotNull(message = "Enter user id")
+public record AssignRoleRequest(
+        @NotNull
         UUID userId,
 
-        @NotBlank(message = "new role is required")
-        String newRole
+        @NotNull
+        UUID clientId,
+
+        @NotBlank
+        String role
 ) {
 }
