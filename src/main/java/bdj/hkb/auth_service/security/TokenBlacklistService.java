@@ -12,6 +12,7 @@ public class TokenBlacklistService {
 
     private final StringRedisTemplate redisTemplate;
     private static final String PREFIX = "blacklist:";
+    private static final String BLACKLIST_CHANNEL = "auth:blacklist";
 
     public void blacklist(String jti, long remainingMillis) {
         if (remainingMillis <= 0) return; // already expired, nothing to blacklist
@@ -21,6 +22,10 @@ public class TokenBlacklistService {
                 "true",
                 Duration.ofMillis(remainingMillis)
         );
+
+        // 2. Publish event to channel
+        String message = jti + ":" + remainingMillis;
+        redisTemplate.convertAndSend(BLACKLIST_CHANNEL, message);
     }
 
     public boolean isBlacklisted(String jti) {
