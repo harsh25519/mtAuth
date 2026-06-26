@@ -82,24 +82,29 @@ public class AuthService {
     // -------------------------------------------------------------------
     public AuthResponse authenticateLocalUser(LocalLoginRequest request) {
 
+        System.out.println("hahahahahha");
         User user = userRepository
                 .findByClientIdAndEmail(request.clientId(), request.email())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
 
+        System.out.println("hahahahahha");
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
+        System.out.println("hahahahahha");
         if (!user.getIsActive()) {
             throw new AccountDisabledException("Account is disabled");
         }
 
+        System.out.println("hahahahahha");
         List<String> roles = userRoleRepository
                 .findByUserIdAndClientId(user.getId(), request.clientId())
                 .stream()
                 .map(UserRole::getRole)
                 .toList();
 
+        System.out.println("hahahahahha");
         return issueTokens(user.getId().toString(), request.clientId().toString(), roles);
     }
 
