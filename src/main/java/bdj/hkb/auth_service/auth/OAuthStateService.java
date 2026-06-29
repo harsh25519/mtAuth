@@ -39,7 +39,6 @@ public class OAuthStateService {
         }
     }
 
-    // You will use this in the next phase during the callback
     public OAuthStateContext validateAndConsumeState(String state) {
         String key = STATE_KEY_PREFIX + state;
         String jsonContext = redisTemplate.opsForValue().get(key);

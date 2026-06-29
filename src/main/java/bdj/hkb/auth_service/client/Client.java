@@ -39,6 +39,6 @@ public class Client {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @Column(name = "frontend_url", nullable = false)
-    private String frontendUrl;
+    @Column(name = "redirect_url", nullable = false)
+    private String redirectUrl;
 }

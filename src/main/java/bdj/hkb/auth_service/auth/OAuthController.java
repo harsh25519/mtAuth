@@ -49,11 +49,11 @@ public class OAuthController {
 
         OAuthProvider provider = OAuthProvider.valueOf(providerStr.toUpperCase());
 
-        String frontendRedirectUrl = orchestratorService.handleProviderCallback(provider, providerCode, state);
+        String redirectUrl = orchestratorService.handleProviderCallback(provider, providerCode, state);
 
         return ResponseEntity
                 .status(HttpStatus.FOUND)
-                .location(URI.create(frontendRedirectUrl))
+                .location(URI.create(redirectUrl))
                 .build();
     }
 

@@ -38,7 +38,7 @@ public class AuthService {
     // LOCAL SIGNUP
     // -------------------------------------------------------------------
     @Transactional
-    public AuthResponse registerLocalUser(LocalSignupRequest request) {
+    public User registerLocalUser(LocalSignupRequest request) {
 
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new ClientNotFoundException("Invalid client"));
@@ -56,7 +56,8 @@ public class AuthService {
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .authProvider("local")
-                .isActive(true)
+                .isActive(false)
+                .isEmailVerified(false)
                 .build();
 
         User savedUser;
@@ -73,8 +74,7 @@ public class AuthService {
                 .build();
         userRoleRepository.save(defaultRole);
 
-        return issueTokens(savedUser.getId().toString(), client.getId().toString(),
-                List.of(defaultRole.getRole()));
+        return savedUser;
     }
 
     // -------------------------------------------------------------------
@@ -88,12 +88,17 @@ public class AuthService {
         User user = userRepository
                 .findByClientIdAndEmail(request.clientId(), request.email())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+
         if(user.getAuthProvider() != "local"){
             throw new InvalidCredentialsException("Wrong auth provider: Required local");
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid credentials");
+        }
+
+        if (!user.getIsEmailVerified()) {
+            throw new RuntimeException("Please verify your email address before logging in.");
         }
 
         if (!user.getIsActive()) {

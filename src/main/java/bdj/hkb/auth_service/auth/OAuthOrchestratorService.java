@@ -8,6 +8,7 @@ import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
 import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
 import bdj.hkb.auth_service.client.Client;
 import bdj.hkb.auth_service.client.ClientRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class OAuthOrchestratorService {
     private final OAuth2Service oAuth2Service;
 
     // Spring automatically injects all beans implementing OAuthProviderStrategy into this List
+    @Autowired
     public OAuthOrchestratorService(
             ClientRepository clientRepository,
             OAuthStateService stateService,
@@ -75,10 +77,10 @@ public class OAuthOrchestratorService {
         String authCode = codeService.saveAuthResponse(authResponse);
 
         // Construct the frontend redirect URL
-        return client.getFrontendUrl() + "/oauth/callback?code=" + authCode;
+        return client.getRedirectUrl() + "/oauth/callback?code=" + authCode;
     }
 
-    // 2. NEW: Exchange the code for the tokens
+    // 2. Exchange the code for the tokens
     public AuthResponse exchangeCodeForTokens(OAuthExchangeRequest request) {
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));

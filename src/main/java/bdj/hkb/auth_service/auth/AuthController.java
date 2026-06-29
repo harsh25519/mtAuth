@@ -1,14 +1,19 @@
 package bdj.hkb.auth_service.auth;
 
-import bdj.hkb.auth_service.auth.dto.*;
+import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.auth.dto.LocalLoginRequest;
+import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
 import bdj.hkb.auth_service.security.dto.RefreshTokenRequest;
+import bdj.hkb.auth_service.user.emailVerification.EmailVerificationService;
+import bdj.hkb.auth_service.user.emailVerification.dto.ResendVerificationRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.auth.InvalidCredentialsException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -16,12 +21,19 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmailVerificationService emailVerificationService;
+    private final LocalAuthOrchestrator localAuthOrchestrator;
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signup(
+    public ResponseEntity<?> signup(
             @Valid @RequestBody LocalSignupRequest request) {
-        AuthResponse response = authService.registerLocalUser(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        // The Controller simply hands the validated request to the Orchestrator
+        localAuthOrchestrator.registerUserAndDispatchEmail(request);
+
+        // And returns the success response
+        return ResponseEntity.ok(Map.of(
+                "message", "Registration successful. Please check your email to verify your account."
+        ));
     }
 
     @PostMapping("/login")
@@ -43,6 +55,32 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refresh(@RequestBody @Valid RefreshTokenRequest request) {
         AuthResponse response = authService.refreshAccessToken(request.refreshToken());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam("token") String token) {
+
+        // This will throw a RuntimeException if the token is invalid or expired
+        emailVerificationService.verifyEmail(token);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Email verified successfully. You can now log in."
+        ));
+    }
+
+    /**
+     * POST /auth/resend-verification
+     * Generates and emails a fresh verification token for unverified users.
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+
+        localAuthOrchestrator.resendVerificationEmail(request);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "If an account exists and is unverified, a new link has been sent."
+        ));
     }
 
 }

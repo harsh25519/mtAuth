@@ -18,7 +18,7 @@ public class OAuthCodeService {
     private final ObjectMapper objectMapper;
 
     private static final String CODE_KEY_PREFIX = "oauth:code:";
-    private static final long CODE_TTL_SECONDS = 90;
+    private static final long CODE_TTL_SECONDS = 35;
 
     public String saveAuthResponse(AuthResponse response) {
         try {
