@@ -4,6 +4,12 @@ import bdj.hkb.auth_service.client.dto.ClientResponse;
 import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
 import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
 import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
+import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+import bdj.hkb.auth_service.role.UserRole;
+import bdj.hkb.auth_service.role.UserRoleRepository;
+import bdj.hkb.auth_service.security.JwtUtilService;
+import bdj.hkb.auth_service.user.User;
+import bdj.hkb.auth_service.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -25,13 +31,19 @@ public class ClientService {
     private final PasswordEncoder passwordEncoder;
 
     private static final SecureRandom RANDOM = new SecureRandom();
+    private final JwtUtilService jwtUtilService;
+    private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
 
     // Inject the Master ID from application.yml
     @Value("${platform.master-client-id}")
     private String masterClientId;
 
     @Transactional
-    public RegisterClientResponse registerClient(RegisterClientRequest request, String tokenClientId){
+    public RegisterClientResponse registerClient(RegisterClientRequest request, String token){
+
+        String tokenClientId = jwtUtilService.extractClientId(token);
+        String userId = jwtUtilService.extractUserId(token);
 
         // --- THE MASTER TENANT CHECK ---
         if (!masterClientId.equals(tokenClientId)) {
@@ -49,9 +61,46 @@ public class ClientService {
                 .name(request.name())
                 .clientSecret(hashedSecret)
                 .isActive(true)
+                .redirectUrl(request.redirectUrl())
                 .build();
 
-        Client savedClient = clientRepository.save(newClient);
+        Client savedClient = clientRepository.saveAndFlush(newClient);
+
+
+        User sourceUser = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new UserNotFoundException("Requester not found"));
+
+        User adminUser ;
+        if(sourceUser.getAuthProvider().equals("local")){
+            adminUser = User.builder()
+                    .email(sourceUser.getEmail())
+                    .passwordHash(sourceUser.getPasswordHash())
+                    .client(savedClient)
+                    .authProvider("local")
+                    .isEmailVerified(true)
+                    .isActive(true)
+                    .build();
+        }else{
+            adminUser = User.builder()
+                    .email(sourceUser.getEmail())
+                    .authProvider(sourceUser.getAuthProvider())
+                    .client(savedClient)
+                    .providerId(sourceUser.getProviderId())
+                    .isEmailVerified(true)
+                    .isActive(true)
+                    .build();
+        }
+
+
+        userRepository.save(adminUser);
+
+        UserRole adminRole = UserRole.builder()
+                .user(adminUser)
+                .client(savedClient)
+                .role("ROLE_ADMIN")
+                .build();
+
+        userRoleRepository.save(adminRole);
 
         // 4. Return the raw secret to the user
         return new RegisterClientResponse(
@@ -82,6 +131,18 @@ public class ClientService {
                 .orElseThrow(() -> new ClientNotFoundException("Invalid client"));
     }
 
+    @Transactional
+    public void updateRedirectUrl(String token, String newUrl) {
+        String jwt = token.replace("Bearer ", "");
+
+        String tokenClientId = jwtUtilService.extractClientId(jwt);
+
+        Client targetClient = clientRepository.findById(UUID.fromString(tokenClientId))
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        targetClient.setRedirectUrl(newUrl);
+        clientRepository.save(targetClient);
+    }
     private String generateSecret() {
         byte[] bytes = new byte[32]; // 256 bits
         RANDOM.nextBytes(bytes);

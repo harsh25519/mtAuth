@@ -4,5 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 
 public record RegisterClientRequest(
         @NotBlank
-        String name
+        String name,
+
+        @NotBlank
+        String redirectUrl
 ) {}

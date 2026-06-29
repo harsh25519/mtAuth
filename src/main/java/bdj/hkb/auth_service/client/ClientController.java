@@ -3,6 +3,7 @@ package bdj.hkb.auth_service.client;
 import bdj.hkb.auth_service.client.dto.ClientResponse;
 import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
 import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
+import bdj.hkb.auth_service.client.dto.UpdateRedirectUrlRequest;
 import bdj.hkb.auth_service.security.JwtUtilService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -33,11 +35,7 @@ public class ClientController {
         // Strip out "Bearer " to get the raw token
         String token = authHeader.substring(7);
 
-        // Extract the Tenant ID from the token payload
-        String tokenClientId = jwtUtilService.extractClientId(token);
-
-        // Pass the extracted ID down to the service layer for security validation
-        RegisterClientResponse response = clientService.registerClient(request, tokenClientId);
+        RegisterClientResponse response = clientService.registerClient(request, token);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -64,6 +62,21 @@ public class ClientController {
         Pageable pageable = PageRequest.of(page, size);
         Page<ClientResponse> clients = clientService.getAllClients(pageable);
         return ResponseEntity.ok(clients);
+    }
+
+    @PutMapping("/update/redirect-url")
+    @PreAuthorize("hasRole(ADMIN)")
+    public ResponseEntity<?> updateRedirectUrl(
+            @Valid @RequestBody UpdateRedirectUrlRequest request,
+            @RequestHeader("Authorization") String token) {
+
+        // We pass the token's Client ID to the service
+        clientService.updateRedirectUrl(
+                token,
+                request.redirectUrl()
+        );
+
+        return ResponseEntity.ok(Map.of("message", "Redirect URL updated successfully"));
     }
 
 }
