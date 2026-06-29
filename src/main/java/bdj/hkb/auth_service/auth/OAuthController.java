@@ -1,5 +1,6 @@
 package bdj.hkb.auth_service.auth;
 
+import bdj.hkb.auth_service.auth.dto.AuthResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +33,24 @@ public class OAuthController {
                 .status(HttpStatus.FOUND)
                 .location(URI.create(authUrl))
                 .build();
+    }
+
+    /**
+     * GET /oauth/{provider}/callback
+     * GitHub or Google redirects the browser back HERE after successful login.
+     */
+    @GetMapping("/{provider}/callback")
+    public ResponseEntity<AuthResponse> oauthCallback(
+            @PathVariable("provider") String providerStr,
+            @RequestParam("code") String providerCode,
+            @RequestParam("state") String state) {
+
+        OAuthProvider provider = OAuthProvider.valueOf(providerStr.toUpperCase());
+
+        // Process the login, create the user, and get the tokens
+        AuthResponse authResponse = orchestratorService.handleProviderCallback(provider, providerCode, state);
+
+        // Return 200 OK with the tokens directly to the screen
+        return ResponseEntity.ok(authResponse);
     }
 }
