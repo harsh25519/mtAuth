@@ -3,6 +3,7 @@ package bdj.hkb.auth_service.auth;
 
 import bdj.hkb.auth_service.auth.dto.AuthResponse;
 import bdj.hkb.auth_service.auth.dto.OAuth2UserInfo;
+import bdj.hkb.auth_service.auth.dto.OAuthExchangeRequest;
 import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
 import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
 import bdj.hkb.auth_service.client.Client;
@@ -58,23 +59,36 @@ public class OAuthOrchestratorService {
 
     // Make sure to inject OAuthCodeService and OAuth2Service into the constructor!
 
-    public AuthResponse handleProviderCallback(OAuthProvider provider, String providerCode, String state) {
-
-        // 1. Validate State
+    public String handleProviderCallback(OAuthProvider provider, String providerCode, String state) {
         OAuthStateContext stateContext = stateService.validateAndConsumeState(state);
-        if (stateContext.provider() != provider) {
-            throw new RuntimeException("OAuth provider mismatch");
-        }
+        if (stateContext.provider() != provider) throw new RuntimeException("OAuth provider mismatch");
 
-        // 2. Fetch Client
         Client client = clientRepository.findByIdAndIsActiveTrue(stateContext.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
 
-        // 3. Delegate to Strategy
         OAuthProviderStrategy strategy = strategyMap.get(provider);
         OAuth2UserInfo userInfo = strategy.fetchUserInfo(providerCode);
 
-        // 4. Save to Database and return the tokens directly for V1 testing
-        return oAuth2Service.processOAuthUser(client, userInfo, provider);
+        AuthResponse authResponse = oAuth2Service.processOAuthUser(client, userInfo, provider);
+
+        // Lock the JWTs in Redis for 30 seconds
+        String authCode = codeService.saveAuthResponse(authResponse);
+
+        // Construct the frontend redirect URL
+        return client.getFrontendUrl() + "/oauth/callback?code=" + authCode;
+    }
+
+    // 2. NEW: Exchange the code for the tokens
+    public AuthResponse exchangeCodeForTokens(OAuthExchangeRequest request) {
+        Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
+                .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
+
+        // Verify the client secret (use passwordEncoder.matches if hashed)
+        if (!client.getClientSecret().equals(request.clientSecret())) {
+            throw new RuntimeException("Invalid client secret");
+        }
+
+        // Unlock the Redis Locker (burns the code instantly)
+        return codeService.consumeAuthCode(request.code());
     }
 }

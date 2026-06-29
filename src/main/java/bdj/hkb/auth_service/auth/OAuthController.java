@@ -1,6 +1,8 @@
 package bdj.hkb.auth_service.auth;
 
 import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.auth.dto.OAuthExchangeRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,17 +42,26 @@ public class OAuthController {
      * GitHub or Google redirects the browser back HERE after successful login.
      */
     @GetMapping("/{provider}/callback")
-    public ResponseEntity<AuthResponse> oauthCallback(
+    public ResponseEntity<Void> oauthCallback(
             @PathVariable("provider") String providerStr,
             @RequestParam("code") String providerCode,
             @RequestParam("state") String state) {
 
         OAuthProvider provider = OAuthProvider.valueOf(providerStr.toUpperCase());
 
-        // Process the login, create the user, and get the tokens
-        AuthResponse authResponse = orchestratorService.handleProviderCallback(provider, providerCode, state);
+        String frontendRedirectUrl = orchestratorService.handleProviderCallback(provider, providerCode, state);
 
-        // Return 200 OK with the tokens directly to the screen
-        return ResponseEntity.ok(authResponse);
+        return ResponseEntity
+                .status(HttpStatus.FOUND)
+                .location(URI.create(frontendRedirectUrl))
+                .build();
+    }
+
+    @PostMapping("/exchange")
+    public ResponseEntity<AuthResponse> exchangeCode(
+            @Valid @RequestBody OAuthExchangeRequest request) {
+
+        AuthResponse response = orchestratorService.exchangeCodeForTokens(request);
+        return ResponseEntity.ok(response);
     }
 }

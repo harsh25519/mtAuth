@@ -53,7 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/signup").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/oauth-login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/oauth/github/exchange").permitAll()
+                        .requestMatchers("/oauth/**").permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ROLE_AUTH_ADMIN")
                         .anyRequest().authenticated()
                 )
