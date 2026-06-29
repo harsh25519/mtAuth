@@ -82,9 +82,15 @@ public class AuthService {
     // -------------------------------------------------------------------
     public AuthResponse authenticateLocalUser(LocalLoginRequest request) {
 
+        Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
+                        .orElseThrow(() -> new ClientNotFoundException("Client not found"));
+
         User user = userRepository
                 .findByClientIdAndEmail(request.clientId(), request.email())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+        if(user.getAuthProvider() != "local"){
+            throw new InvalidCredentialsException("Wrong auth provider: Required local");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid credentials");
@@ -109,9 +115,10 @@ public class AuthService {
     public void logout(String accessToken) {
         String jti = jwtUtil.extractJti(accessToken);
         String userId = jwtUtil.extractUserId(accessToken);
+        String clientId = jwtUtil.extractClientId(accessToken);
         long remainingMillis = jwtUtil.extractExpiration(accessToken).getTime() - System.currentTimeMillis();
         tokenBlacklistService.blacklist(jti, remainingMillis);
-        refreshTokenService.revoke(userId);
+        refreshTokenService.revoke(userId, clientId);
     }
 
     // -------------------------------------------------------------------
@@ -129,8 +136,9 @@ public class AuthService {
 
         String userId = jwtUtil.extractUserId(refreshToken);
         String jti = jwtUtil.extractJti(refreshToken);
+        String clientId = jwtUtil.extractClientId(refreshToken);
 
-        if (!refreshTokenService.isValid(userId, jti)) {
+        if (!refreshTokenService.isValid(userId, clientId, jti)) {
             throw new InvalidTokenException("Refresh token has been revoked or replaced");
         }
 
@@ -155,11 +163,11 @@ public class AuthService {
     // -------------------------------------------------------------------
     AuthResponse issueTokens(String userId, String clientId, List<String> roles) {
         String accessToken = jwtUtil.generateAccessToken(userId, clientId, roles);
-        String refreshToken = jwtUtil.generateRefreshToken(userId);
+        String refreshToken = jwtUtil.generateRefreshToken(userId, clientId);
 
         String refreshJti = jwtUtil.extractJti(refreshToken);
         long refreshExpiry = jwtUtil.extractExpiration(refreshToken).getTime() - System.currentTimeMillis();
-        refreshTokenService.store(userId, refreshJti, refreshExpiry);
+        refreshTokenService.store(userId, clientId, refreshJti, refreshExpiry);
 
         return new AuthResponse(accessToken, refreshToken, "Bearer");
     }

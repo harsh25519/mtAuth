@@ -13,20 +13,20 @@ public class RefreshTokenService {
     private final StringRedisTemplate redisTemplate;
     private static final String PREFIX = "refresh:";
 
-    public void store(String userId, String jti, long expirationMillis) {
+    public void store(String userId, String clientId, String jti, long expirationMillis) {
         redisTemplate.opsForValue().set(
-                PREFIX + userId,
+                PREFIX + userId + ":" + clientId,
                 jti,
                 Duration.ofMillis(expirationMillis)
         );
     }
 
-    public boolean isValid(String userId, String jti) {
-        String storedJti = redisTemplate.opsForValue().get(PREFIX + userId);
+    public boolean isValid(String userId, String clientId, String jti) {
+        String storedJti = redisTemplate.opsForValue().get(PREFIX + userId + ":" + clientId);
         return jti.equals(storedJti);
     }
 
-    public void revoke(String userId) {
-        redisTemplate.delete(PREFIX + userId);
+    public void revoke(String userId, String clientId) {
+        redisTemplate.delete(PREFIX + userId + ":" + clientId);
     }
 }

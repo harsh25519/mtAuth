@@ -38,4 +38,7 @@ public class Client {
     @CreationTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Column(name = "frontend_url", nullable = false)
+    private String frontendUrl;
 }

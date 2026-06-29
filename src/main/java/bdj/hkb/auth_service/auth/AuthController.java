@@ -1,9 +1,6 @@
 package bdj.hkb.auth_service.auth;
 
-import bdj.hkb.auth_service.auth.dto.AuthResponse;
-import bdj.hkb.auth_service.auth.dto.LocalLoginRequest;
-import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
-import bdj.hkb.auth_service.auth.dto.OAuthSignupRequest;
+import bdj.hkb.auth_service.auth.dto.*;
 import bdj.hkb.auth_service.security.dto.RefreshTokenRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final OAuth2Service oAuth2Service;
 
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(
@@ -32,13 +28,6 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LocalLoginRequest request) throws InvalidCredentialsException {
         AuthResponse response = authService.authenticateLocalUser(request);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/oauth-login")
-    public ResponseEntity<AuthResponse> oauthLogin(
-            @Valid @RequestBody OAuthSignupRequest request) {
-        AuthResponse response = oAuth2Service.authenticateOAuthUser(request);
         return ResponseEntity.ok(response);
     }
 

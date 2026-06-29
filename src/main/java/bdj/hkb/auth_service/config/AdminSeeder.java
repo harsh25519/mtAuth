@@ -43,10 +43,10 @@ public class AdminSeeder implements ApplicationRunner {
         Client client = clientRepository.findById(clientUuid)
                 .orElseGet(() -> {
                     log.info("Seeding Master Console Client...");
-                    return clientRepository.save(Client.builder()
+                    return clientRepository.saveAndFlush(Client.builder()
                             .id(clientUuid)
                             .name("auth-console")
-                            .clientSecret(passwordEncoder.encode("console-internal-secret"))
+                            .clientSecret(passwordEncoder.encode("secret123"))
                             .isActive(true)
                             .build());
                 });

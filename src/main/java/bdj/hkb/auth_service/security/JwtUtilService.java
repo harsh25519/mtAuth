@@ -43,12 +43,13 @@ public class JwtUtilService {
     // -------------------------------------------------------------------
     // REFRESH TOKEN — new, minimal payload, longer expiry
     // -------------------------------------------------------------------
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userId, String clientId) {
         return Jwts.builder()
                 .claims()
                 .add("type", "refresh")
                 .id(UUID.randomUUID().toString())
                 .subject(userId)
+                .add("clientId",clientId)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_MS))
                 .and()
