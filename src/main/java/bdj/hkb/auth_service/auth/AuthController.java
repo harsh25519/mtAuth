@@ -6,6 +6,9 @@ import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
 import bdj.hkb.auth_service.security.dto.RefreshTokenRequest;
 import bdj.hkb.auth_service.user.emailVerification.EmailVerificationService;
 import bdj.hkb.auth_service.user.emailVerification.dto.ResendVerificationRequest;
+import bdj.hkb.auth_service.user.passwordReset.PasswordResetService;
+import bdj.hkb.auth_service.user.passwordReset.dto.ForgotPasswordRequest;
+import bdj.hkb.auth_service.user.passwordReset.dto.ResetPasswordExecutionRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.auth.InvalidCredentialsException;
@@ -23,6 +26,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
     private final LocalAuthOrchestrator localAuthOrchestrator;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(
@@ -57,7 +61,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/verify-email")
+    @GetMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestParam("token") String token) {
 
         // This will throw a RuntimeException if the token is invalid or expired
@@ -68,10 +72,6 @@ public class AuthController {
         ));
     }
 
-    /**
-     * POST /auth/resend-verification
-     * Generates and emails a fresh verification token for unverified users.
-     */
     @PostMapping("/resend-verification")
     public ResponseEntity<?> resendVerification(
             @Valid @RequestBody ResendVerificationRequest request) {
@@ -83,4 +83,20 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        localAuthOrchestrator.requestPasswordReset(request);
+        return ResponseEntity.ok(Map.of(
+                "message", "If an account with that email exists, a password reset link has been sent."
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordExecutionRequest request,
+                                           @RequestParam("token") String token) {
+        passwordResetService.executePasswordReset(token, request.newPassword());
+        return ResponseEntity.ok(Map.of(
+                "message", "Password has been successfully reset. You can now log in."
+        ));
+    }
 }

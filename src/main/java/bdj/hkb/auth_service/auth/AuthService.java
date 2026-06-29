@@ -85,11 +85,12 @@ public class AuthService {
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                         .orElseThrow(() -> new ClientNotFoundException("Client not found"));
 
-        User user = userRepository
-                .findByClientIdAndEmail(request.clientId(), request.email())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
-
-        if(user.getAuthProvider() != "local"){
+        // 2. Locate User
+        User user = userRepository.findByClientIdAndEmail(request.clientId(), request.email())
+                .orElseThrow(() -> new RuntimeException(
+                        "User not found for ClientID: " + request.clientId() + " and Email: " + request.email()
+                ));
+        if(!user.getAuthProvider().equals("local")){
             throw new InvalidCredentialsException("Wrong auth provider: Required local");
         }
 
