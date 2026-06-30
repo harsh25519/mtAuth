@@ -34,7 +34,6 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
@@ -49,19 +48,34 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/signup").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/resend-verification").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/auth/verify-email").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/forgot-password").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/reset-password").permitAll()
+                        // Auth Controller
+                        .requestMatchers("/auth/logout").authenticated()
+                        .requestMatchers("/auth/**").permitAll()
+
+                        // OAuth Controller
                         .requestMatchers("/oauth/**").permitAll()
-                        .requestMatchers("/admin/**").hasAuthority("ROLE_AUTH_ADMIN")
+
+                        // Client Controller
+                        .requestMatchers(HttpMethod.GET,"/clients").hasRole("AUTH_ADMIN")
+                        .requestMatchers(HttpMethod.PUT,"/clients/update/redirect-url").hasRole("ADMIN")
+                        .requestMatchers("/clients/**").authenticated()
+
+                        // User Role Controller
+                        .requestMatchers("/users/roles").hasAnyRole("ADMIN","AUTH_ADMIN")
+
+                        // User Controller
+                        .requestMatchers(HttpMethod.GET, "/users").hasRole("AUTH_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/users/client/**").hasAnyRole("ADMIN","AUTH_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/users/{userId}").authenticated()
+
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .xssProtection(Customizer.withDefaults())
+                        .contentTypeOptions(Customizer.withDefaults())
+                );
 
         return http.build();
     }
@@ -85,9 +99,11 @@ public class SecurityConfig {
                 "http://localhost:8081"
         ));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("PUT", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

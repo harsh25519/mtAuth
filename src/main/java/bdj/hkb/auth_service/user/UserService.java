@@ -47,7 +47,7 @@ public class UserService {
         return mapToResponsePage(userPage);
     }
 
-    // --- YOUR PERFECT MAPPING LOGIC BELOW ---
+    // --- MAPPING LOGIC ---
 
     private Page<UserResponse> mapToResponsePage(Page<User> userPage) {
         List<User> users = userPage.getContent();
