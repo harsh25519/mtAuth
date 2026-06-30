@@ -8,6 +8,7 @@ import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
 import bdj.hkb.auth_service.role.UserRole;
 import bdj.hkb.auth_service.role.UserRoleRepository;
 import bdj.hkb.auth_service.security.JwtUtilService;
+import bdj.hkb.auth_service.security.dto.JwtPrincipal;
 import bdj.hkb.auth_service.user.User;
 import bdj.hkb.auth_service.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,13 +41,13 @@ public class ClientService {
     private String masterClientId;
 
     @Transactional
-    public RegisterClientResponse registerClient(RegisterClientRequest request, String token){
+    public RegisterClientResponse registerClient(RegisterClientRequest request, JwtPrincipal token){
 
-        String tokenClientId = jwtUtilService.extractClientId(token);
-        String userId = jwtUtilService.extractUserId(token);
+        UUID tokenClientId = token.clientId();
+        UUID userId = token.userId();
 
         // --- THE MASTER TENANT CHECK ---
-        if (!masterClientId.equals(tokenClientId)) {
+        if (!masterClientId.equals(tokenClientId.toString())) {
             throw new AccessDeniedException("Unauthorized: Only users belonging to the main platform can create new clients.");
         }
 
@@ -67,7 +68,7 @@ public class ClientService {
         Client savedClient = clientRepository.saveAndFlush(newClient);
 
 
-        User sourceUser = userRepository.findById(UUID.fromString(userId))
+        User sourceUser = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("Requester not found"));
 
         User adminUser ;
@@ -132,13 +133,12 @@ public class ClientService {
     }
 
     @Transactional
-    public void updateRedirectUrl(String token, String newUrl) {
-        String jwt = token.replace("Bearer ", "");
+    public void updateRedirectUrl(JwtPrincipal token, String newUrl) {
 
-        String tokenClientId = jwtUtilService.extractClientId(jwt);
+        UUID tokenClientId = token.clientId();
 
-        Client targetClient = clientRepository.findById(UUID.fromString(tokenClientId))
-                .orElseThrow(() -> new RuntimeException("Client not found"));
+        Client targetClient = clientRepository.findById(tokenClientId)
+                .orElseThrow(() -> new ClientNotFoundException("Client not found"));
 
         targetClient.setRedirectUrl(newUrl);
         clientRepository.save(targetClient);

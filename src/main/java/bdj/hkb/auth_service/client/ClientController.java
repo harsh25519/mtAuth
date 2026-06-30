@@ -5,6 +5,7 @@ import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
 import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
 import bdj.hkb.auth_service.client.dto.UpdateRedirectUrlRequest;
 import bdj.hkb.auth_service.security.JwtUtilService;
+import bdj.hkb.auth_service.security.dto.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,10 +32,7 @@ public class ClientController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<RegisterClientResponse> registerClient(
             @Valid @RequestBody RegisterClientRequest request,
-            @RequestHeader("Authorization") String authHeader) {
-
-        // Strip out "Bearer " to get the raw token
-        String token = authHeader.substring(7);
+            @AuthenticationPrincipal JwtPrincipal token) {
 
         RegisterClientResponse response = clientService.registerClient(request, token);
 
@@ -68,7 +67,7 @@ public class ClientController {
     @PreAuthorize("hasRole(ADMIN)")
     public ResponseEntity<?> updateRedirectUrl(
             @Valid @RequestBody UpdateRedirectUrlRequest request,
-            @RequestHeader("Authorization") String token) {
+            @AuthenticationPrincipal JwtPrincipal token) {
 
         // We pass the token's Client ID to the service
         clientService.updateRedirectUrl(

@@ -3,6 +3,7 @@ package bdj.hkb.auth_service.auth;
 import bdj.hkb.auth_service.auth.dto.AuthResponse;
 import bdj.hkb.auth_service.auth.dto.LocalLoginRequest;
 import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
+import bdj.hkb.auth_service.auth.dto.MessageResponse;
 import bdj.hkb.auth_service.security.dto.RefreshTokenRequest;
 import bdj.hkb.auth_service.user.emailVerification.EmailVerificationService;
 import bdj.hkb.auth_service.user.emailVerification.dto.ResendVerificationRequest;
@@ -35,8 +36,8 @@ public class AuthController {
         localAuthOrchestrator.registerUserAndDispatchEmail(request);
 
         // And returns the success response
-        return ResponseEntity.ok(Map.of(
-                "message", "Registration successful. Please check your email to verify your account."
+        return ResponseEntity.ok(new MessageResponse(
+                "Registration successful. Please check your email to verify your account."
         ));
     }
 
@@ -78,25 +79,32 @@ public class AuthController {
 
         localAuthOrchestrator.resendVerificationEmail(request);
 
-        return ResponseEntity.ok(Map.of(
-                "message", "If an account exists and is unverified, a new link has been sent."
-        ));
+        return ResponseEntity.ok(
+                new MessageResponse(
+                        "If an account exists and is unverified, a new link has been sent."
+                )
+        );
     }
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         localAuthOrchestrator.requestPasswordReset(request);
-        return ResponseEntity.ok(Map.of(
-                "message", "If an account with that email exists, a password reset link has been sent."
-        ));
+        return ResponseEntity.ok(
+                new MessageResponse(
+                        "If an account with that email exists, a password reset link has been sent."
+                )
+        );
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordExecutionRequest request,
                                            @RequestParam("token") String token) {
         passwordResetService.executePasswordReset(token, request.newPassword());
-        return ResponseEntity.ok(Map.of(
-                "message", "Password has been successfully reset. You can now log in."
-        ));
+        return ResponseEntity.ok(
+                new MessageResponse(
+                        "Password has been successfully reset. You can now log in."
+                )
+        );
+
     }
 }

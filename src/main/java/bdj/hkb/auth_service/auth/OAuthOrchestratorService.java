@@ -8,7 +8,9 @@ import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
 import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
 import bdj.hkb.auth_service.client.Client;
 import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.exceptionHandler.InvalidClientSecretException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,7 @@ public class OAuthOrchestratorService {
     private final Map<OAuthProvider, OAuthProviderStrategy> strategyMap;
     private final OAuthCodeService codeService;
     private final OAuth2Service oAuth2Service;
+    private final PasswordEncoder passwordEncoder;
 
     // Spring automatically injects all beans implementing OAuthProviderStrategy into this List
     @Autowired
@@ -32,7 +35,7 @@ public class OAuthOrchestratorService {
             ClientRepository clientRepository,
             OAuthStateService stateService,
             List<OAuthProviderStrategy> strategies,
-            OAuthCodeService codeService, OAuth2Service oAuth2Service) {
+            OAuthCodeService codeService, OAuth2Service oAuth2Service, PasswordEncoder passwordEncoder) {
         this.clientRepository = clientRepository;
         this.stateService = stateService;
         // Convert the list to a Map for O(1) instant lookups
@@ -40,6 +43,7 @@ public class OAuthOrchestratorService {
                 .collect(Collectors.toMap(OAuthProviderStrategy::getProvider, Function.identity()));
         this.codeService = codeService;
         this.oAuth2Service = oAuth2Service;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public String getAuthorizationUrl(OAuthProvider provider, UUID clientId) {
@@ -63,7 +67,8 @@ public class OAuthOrchestratorService {
 
     public String handleProviderCallback(OAuthProvider provider, String providerCode, String state) {
         OAuthStateContext stateContext = stateService.validateAndConsumeState(state);
-        if (stateContext.provider() != provider) throw new RuntimeException("OAuth provider mismatch");
+        if (stateContext.provider() != provider)
+            throw new RuntimeException("OAuth provider mismatch");
 
         Client client = clientRepository.findByIdAndIsActiveTrue(stateContext.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
@@ -86,8 +91,8 @@ public class OAuthOrchestratorService {
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
 
         // Verify the client secret (use passwordEncoder.matches if hashed)
-        if (!client.getClientSecret().equals(request.clientSecret())) {
-            throw new RuntimeException("Invalid client secret");
+        if (!passwordEncoder.matches(request.clientSecret(), client.getClientSecret())) {
+            throw new InvalidClientSecretException("Invalid client secret");
         }
 
         // Unlock the Redis Locker (burns the code instantly)
