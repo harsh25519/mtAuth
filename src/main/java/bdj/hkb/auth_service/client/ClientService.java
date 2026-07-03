@@ -7,11 +7,11 @@ import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
 import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
 import bdj.hkb.auth_service.role.UserRole;
 import bdj.hkb.auth_service.role.UserRoleRepository;
-import bdj.hkb.auth_service.security.JwtUtilService;
 import bdj.hkb.auth_service.security.dto.JwtPrincipal;
 import bdj.hkb.auth_service.user.User;
 import bdj.hkb.auth_service.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,13 +26,13 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ClientService {
 
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private final JwtUtilService jwtUtilService;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
 
@@ -43,11 +43,21 @@ public class ClientService {
     @Transactional
     public RegisterClientResponse registerClient(RegisterClientRequest request, JwtPrincipal token){
 
+        log.info(
+                "Client registration requested by user {}",
+                token.userId()
+        );
+
         UUID tokenClientId = token.clientId();
         UUID userId = token.userId();
 
         // --- THE MASTER TENANT CHECK ---
         if (!masterClientId.equals(tokenClientId.toString())) {
+            log.warn(
+                    "Unauthorized client creation attempt by user {} from client {}",
+                    userId,
+                    tokenClientId
+            );
             throw new AccessDeniedException("Unauthorized: Only users belonging to the main platform can create new clients.");
         }
 
@@ -67,6 +77,11 @@ public class ClientService {
 
         Client savedClient = clientRepository.saveAndFlush(newClient);
 
+        log.info(
+                "Client '{}' ({}) created successfully",
+                savedClient.getName(),
+                savedClient.getId()
+        );
 
         User sourceUser = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("Requester not found"));
@@ -95,6 +110,12 @@ public class ClientService {
 
         userRepository.save(adminUser);
 
+        log.info(
+                "Created admin user {} for client {}",
+                adminUser.getId(),
+                savedClient.getId()
+        );
+
         UserRole adminRole = UserRole.builder()
                 .user(adminUser)
                 .client(savedClient)
@@ -102,6 +123,12 @@ public class ClientService {
                 .build();
 
         userRoleRepository.save(adminRole);
+
+        log.info(
+                "Assigned ROLE_ADMIN to user {} for client {}",
+                adminUser.getId(),
+                savedClient.getId()
+        );
 
         // 4. Return the raw secret to the user
         return new RegisterClientResponse(
@@ -135,6 +162,12 @@ public class ClientService {
     @Transactional
     public void updateRedirectUrl(JwtPrincipal token, String newUrl) {
 
+        log.info(
+                "User {} requested redirect URL update for client {}",
+                token.userId(),
+                token.clientId()
+        );
+
         UUID tokenClientId = token.clientId();
 
         Client targetClient = clientRepository.findById(tokenClientId)
@@ -142,7 +175,15 @@ public class ClientService {
 
         targetClient.setRedirectUrl(newUrl);
         clientRepository.save(targetClient);
+
+        log.info(
+                "Redirect URL updated successfully for client {} by user {}",
+                token.clientId(),
+                token.userId()
+        );
+
     }
+
     private String generateSecret() {
         byte[] bytes = new byte[32]; // 256 bits
         RANDOM.nextBytes(bytes);

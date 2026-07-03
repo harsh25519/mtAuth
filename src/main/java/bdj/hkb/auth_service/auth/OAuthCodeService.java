@@ -1,9 +1,14 @@
 package bdj.hkb.auth_service.auth;
 
 import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthStateException;
+import bdj.hkb.auth_service.exceptionHandler.OAuthCodeDeserializationException;
+import bdj.hkb.auth_service.exceptionHandler.OAuthCodeSerializationException;
+import bdj.hkb.auth_service.security.JwtUtilService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +17,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OAuthCodeService {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final JwtUtilService jwtUtilService;
 
     private static final String CODE_KEY_PREFIX = "oauth:code:";
     private static final long CODE_TTL_SECONDS = 35;
@@ -31,9 +38,17 @@ public class OAuthCodeService {
                     Duration.ofSeconds(CODE_TTL_SECONDS)
             );
 
+            String userId = jwtUtilService.extractUserId(response.accessToken());
+            String clientId = jwtUtilService.extractClientId(response.accessToken());
+
+            log.info(
+                    "Generated OAuth authorization code for user {} with client {}",
+                    userId,
+                    clientId
+                    );
             return authCode;
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize AuthResponse", e);
+            throw new OAuthCodeSerializationException("Failed to serialize AuthResponse", e);
         }
     }
 
@@ -44,11 +59,15 @@ public class OAuthCodeService {
         if (jsonPayload != null) {
             redisTemplate.delete(key); // Burn instantly to prevent replay attacks
             try {
-                return objectMapper.readValue(jsonPayload, AuthResponse.class);
+                AuthResponse response = objectMapper.readValue(jsonPayload, AuthResponse.class);
+
+                log.info("OAuth authorization code successfully consumed");
+
+                return response;
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("Failed to deserialize AuthResponse", e);
+                throw new OAuthCodeDeserializationException("Failed to deserialize AuthResponse", e);
             }
         }
-        throw new RuntimeException("Invalid or expired authorization code");
+        throw new InvalidOAuthStateException("Invalid or expired authorization code");
     }
 }

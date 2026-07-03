@@ -3,6 +3,7 @@ package bdj.hkb.auth_service.utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -34,8 +35,9 @@ public class EmailService {
 
         try {
             mailSender.send(message);
-        } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", recipientEmail, e.getMessage());
+        } catch (MailException e) {
+            log.error("Failed to send verification email: {}", recipientEmail, e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -53,8 +55,9 @@ public class EmailService {
 
         try {
             mailSender.send(message);
-        } catch (Exception e) {
-            log.error("Failed to send password reset email to {}: {}", email, e.getMessage());
+        } catch (MailException e) {
+            log.error("Failed to send password reset mail: {}", email, e.getMessage());
+            throw new RuntimeException(e);
         }
 
     }

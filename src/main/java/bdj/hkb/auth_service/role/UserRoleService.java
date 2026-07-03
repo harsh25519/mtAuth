@@ -9,6 +9,7 @@ import bdj.hkb.auth_service.security.dto.JwtPrincipal;
 import bdj.hkb.auth_service.user.User;
 import bdj.hkb.auth_service.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserRoleService {
 
     private static final String ROLE_AUTH_ADMIN = "ROLE_AUTH_ADMIN";
@@ -30,12 +32,26 @@ public class UserRoleService {
 
     @Transactional
     public void assignRole(AssignRoleRequest request, JwtPrincipal principal) {
+
+        log.info(
+                "User {} requested assignment of role {} to user {} in client {}",
+                principal.userId(),
+                request.role(),
+                request.userId(),
+                request.clientId()
+        );
+
         authorizeRoleChange(request.clientId(), principal);
 
         String normalizedRole = normalizeRole(request.role());
 
         // Privilege escalation guard — only a platform admin can grant platform-admin
         if (normalizedRole.equals(ROLE_AUTH_ADMIN) && !principal.hasRole(ROLE_AUTH_ADMIN)) {
+            log.warn(
+                    "User {} attempted to assign platform role {} without authorization",
+                    principal.userId(),
+                    request.role()
+            );
             throw new AccessDeniedException("Only a platform admin can grant " + ROLE_AUTH_ADMIN);
         }
 
@@ -48,6 +64,12 @@ public class UserRoleService {
                 .anyMatch(ur -> ur.getRole().equals(normalizedRole));
 
         if (alreadyHasRole) {
+            log.info(
+                    "User {} already has role {} in client {}",
+                    request.userId(),
+                    normalizedRole,
+                    request.clientId()
+            );
             return; // idempotent
         }
 
@@ -58,10 +80,28 @@ public class UserRoleService {
                 .build();
 
         userRoleRepository.save(newRole);
+
+        log.info(
+                "Assigned role {} to user {} in client {} by {}",
+                normalizedRole,
+                request.userId(),
+                request.clientId(),
+                principal.userId()
+        );
+
     }
 
     @Transactional
     public void revokeRole(RevokeRoleRequest request, JwtPrincipal principal) {
+
+        log.info(
+                "User {} requested revocation of role {} from user {} in client {}",
+                principal.userId(),
+                request.role(),
+                request.userId(),
+                request.clientId()
+        );
+
         authorizeRoleChange(request.clientId(), principal);
 
         String normalizedRole = normalizeRole(request.role());
@@ -69,6 +109,12 @@ public class UserRoleService {
         // Self-lockout guard — covers both admin tiers
         boolean isTargetingSelf = principal.userId().equals(request.userId());
         if (isTargetingSelf && LOCKOUT_PROTECTED_ROLES.contains(normalizedRole)) {
+            log.warn(
+                    "User {} attempted to revoke their own protected role {}",
+                    principal.userId(),
+                    normalizedRole
+            );
+
             throw new AccessDeniedException(
                     "You cannot revoke your own admin privileges. Ask another admin to do this.");
         }
@@ -83,6 +129,14 @@ public class UserRoleService {
                         "User does not have role: " + normalizedRole));
 
         userRoleRepository.delete(toRemove);
+
+        log.info(
+                "Revoked role {} from user {} in client {} by {}",
+                normalizedRole,
+                request.userId(),
+                request.clientId(),
+                principal.userId()
+        );
     }
 
     private String normalizeRole(String rawRole) {
@@ -96,6 +150,12 @@ public class UserRoleService {
                 && principal.hasRole(ROLE_CLIENT_ADMIN);
 
         if (!isGlobalAdmin && !isSameTenantAdmin) {
+            log.warn(
+                    "Unauthorized role management attempt by user {} for client {}",
+                    principal.userId(),
+                    clientId
+            );
+
             throw new AccessDeniedException("You are not allowed to manage roles for this client");
         }
     }

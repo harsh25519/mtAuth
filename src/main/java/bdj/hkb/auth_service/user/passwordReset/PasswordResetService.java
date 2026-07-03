@@ -1,9 +1,11 @@
 package bdj.hkb.auth_service.user.passwordReset;
 
+import bdj.hkb.auth_service.exceptionHandler.InvalidPasswordResetTokenException;
 import bdj.hkb.auth_service.user.User;
 import bdj.hkb.auth_service.user.UserRepository;
 import bdj.hkb.auth_service.utils.TokenUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import java.time.OffsetDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PasswordResetService {
 
     private final PasswordResetTokenRepository tokenRepository;
@@ -32,6 +35,12 @@ public class PasswordResetService {
                 .build();
 
         tokenRepository.save(resetToken);
+
+        log.info(
+                "Password reset token generated for user {}",
+                user.getId()
+        );
+
         return token;
     }
 
@@ -39,10 +48,15 @@ public class PasswordResetService {
     public void executePasswordReset(String token, String newRawPassword) {
         // 1. Find the token
         PasswordResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid reset token"));
+                .orElseThrow(() -> new InvalidPasswordResetTokenException("Invalid password reset token"));
 
         // 2. Check Expiration
         if (resetToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            log.warn(
+                    "Expired password reset token used for user {}",
+                    resetToken.getUser().getId()
+            );
+
             tokenRepository.delete(resetToken);
             throw new RuntimeException("Reset token has expired. Please request a new one.");
         }
@@ -54,5 +68,11 @@ public class PasswordResetService {
 
         // 4. Burn the token so it cannot be used twice
         tokenRepository.delete(resetToken);
+
+        log.info(
+                "Password successfully reset for user {}",
+                user.getId()
+        );
+
     }
 }

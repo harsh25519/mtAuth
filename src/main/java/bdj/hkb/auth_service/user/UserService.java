@@ -5,6 +5,7 @@ import bdj.hkb.auth_service.role.UserRole;
 import bdj.hkb.auth_service.role.UserRoleRepository;
 import bdj.hkb.auth_service.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -28,27 +30,59 @@ public class UserService {
     private String masterClientId;
 
     public Page<UserResponse> getAllUsers(String tokenClientId, Pageable pageable) {
+        log.info(
+                "Global user listing requested by client {}",
+                tokenClientId
+        );
+
         // SECURITY: Only the platform admin can fetch everyone
         if (!masterClientId.equals(tokenClientId)) {
+            log.warn(
+                    "Unauthorized attempt to fetch all users by client {}",
+                    tokenClientId
+            );
             throw new AccessDeniedException("Unauthorized: Only platform admins can view all users globally.");
         }
 
         Page<User> userPage = userRepository.findAllWithClient(pageable);
+
+        log.info(
+                "Returned {} users to client {}",
+                userPage.getNumberOfElements(),
+                tokenClientId
+        );
+
         return mapToResponsePage(userPage);
     }
 
     public Page<UserResponse> getUsersByClientId(UUID requestedClientId, String tokenClientId, Pageable pageable) {
+        log.info(
+                "User listing requested for client {} by client {}",
+                requestedClientId,
+                tokenClientId
+        );
         // SECURITY: You can only view users in your own tenant (or if you are the master admin)
         if (!requestedClientId.toString().equals(tokenClientId) && !masterClientId.equals(tokenClientId)) {
+            log.warn(
+                    "Cross-tenant user listing attempt. Requested client {}, requester client {}",
+                    requestedClientId,
+                    tokenClientId
+            );
             throw new AccessDeniedException("Unauthorized: You cannot view users belonging to another tenant.");
         }
 
         Page<User> userPage = userRepository.findByClientIdWithClient(requestedClientId, pageable);
+
+        log.info(
+                "Returned {} users for client {}",
+                userPage.getNumberOfElements(),
+                requestedClientId
+        );
+
         return mapToResponsePage(userPage);
     }
 
     // --- MAPPING LOGIC ---
-
     private Page<UserResponse> mapToResponsePage(Page<User> userPage) {
         List<User> users = userPage.getContent();
         Map<UUID, List<String>> rolesByUserId = fetchRolesGrouped(users);
@@ -74,6 +108,12 @@ public class UserService {
     // --- Single User Lookup ---
     public UserResponse getUserById(UUID requestedUserId, String tokenClientId) {
 
+        log.info(
+                "User {} details requested by client {}",
+                requestedUserId,
+                tokenClientId
+        );
+
         // 1. Fetch the user
         User user = userRepository.findById(requestedUserId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -81,6 +121,11 @@ public class UserService {
         // 2. SECURITY CHECK: Prevent cross-tenant ID guessing
         String targetUserClientId = user.getClient().getId().toString();
         if (!targetUserClientId.equals(tokenClientId) && !masterClientId.equals(tokenClientId)) {
+            log.warn(
+                    "Unauthorized access attempt to user {} by client {}",
+                    requestedUserId,
+                    tokenClientId
+            );
             throw new AccessDeniedException("Unauthorized: You do not have permission to view this user's details.");
         }
 
@@ -90,6 +135,11 @@ public class UserService {
                 .map(UserRole::getRole)
                 .toList();
 
+
+        log.info(
+                "User {} details returned successfully",
+                requestedUserId
+        );
         // 4. Map to DTO
         return toResponse(user, roles);
     }

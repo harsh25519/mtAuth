@@ -11,11 +11,13 @@ import bdj.hkb.auth_service.user.passwordReset.PasswordResetService;
 import bdj.hkb.auth_service.user.passwordReset.dto.ForgotPasswordRequest;
 import bdj.hkb.auth_service.utils.EmailService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LocalAuthOrchestrator {
 
     private final ClientRepository clientRepository;
@@ -33,9 +35,11 @@ public class LocalAuthOrchestrator {
         // 1. Fetch Client
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
+        log.info("Starting registration for email {}", request.email());
 
         // 2. Register User (isActive=false, isEmailVerified=false)
         User savedUser = authService.registerLocalUser(request);
+        log.info("User {} registered successfully. Awaiting email verification.", savedUser.getId());
 
         // 3. Generate Token
         String verificationToken = emailVerificationService.createVerificationToken(savedUser);
@@ -45,11 +49,13 @@ public class LocalAuthOrchestrator {
                 savedUser.getEmail(),
                 verificationToken
         );
+        log.info("Verification email queued for user {}", savedUser.getId());
     }
 
     @Transactional
     public void resendVerificationEmail(ResendVerificationRequest request) {
 
+        log.info("Verification email resend requested for {}", request.email());
         // 1. Fetch Client to get the frontend URL
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
@@ -63,18 +69,21 @@ public class LocalAuthOrchestrator {
             throw new RuntimeException("Email is already verified. Please log in.");
         }
 
-        // 4. Generate a fresh token (This automatically deletes the old one thanks to our @OneToOne logic)
+        // 4. Generate a fresh token (This automatically deletes the old one)
         String newToken = emailVerificationService.createVerificationToken(user);
+        log.info("New verification token generated for user {}", user.getId());
 
         // 5. Dispatch the email asynchronously
         emailService.sendVerificationEmail(
                 user.getEmail(),
                 newToken
         );
+        log.info("Verification email resent to user {}", user.getId());
     }
 
     @Transactional
     public void requestPasswordReset(ForgotPasswordRequest request) {
+        log.info("Password reset requested for {}", request.email());
         // 1. Validate Client
         clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
@@ -85,6 +94,7 @@ public class LocalAuthOrchestrator {
 
         if (user.getAuthProvider().equals("local")) {
             String token = passwordResetService.createResetToken(user);
+            log.info("Password reset email queued for user {}", user.getId());
             emailService.sendPasswordResetEmail(user.getEmail(), token);
         }
     }

@@ -8,7 +8,10 @@ import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
 import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
 import bdj.hkb.auth_service.client.Client;
 import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
 import bdj.hkb.auth_service.exceptionHandler.InvalidClientSecretException;
+import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthProviderException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class OAuthOrchestratorService {
 
     private final ClientRepository clientRepository;
@@ -47,9 +51,16 @@ public class OAuthOrchestratorService {
     }
 
     public String getAuthorizationUrl(OAuthProvider provider, UUID clientId) {
+
+        log.info(
+                "OAuth authorization requested for provider {} under client {}",
+                provider,
+                clientId
+        );
+
         // 1. Validate Client
         clientRepository.findByIdAndIsActiveTrue(clientId)
-                .orElseThrow(() -> new RuntimeException("Invalid or inactive Client ID"));
+                .orElseThrow(() -> new ClientNotFoundException("Invalid or inactive Client ID"));
 
         // 2. Generate State (now includes the provider for security!)
         String state = stateService.generateAndSaveState(clientId, provider);
@@ -60,26 +71,57 @@ public class OAuthOrchestratorService {
             throw new IllegalArgumentException("No strategy configured for provider: " + provider);
         }
 
-        return strategy.buildAuthorizationUrl(state);
+        String authUrl = strategy.buildAuthorizationUrl(state);;
+        log.info(
+                "Generated OAuth authorization URL for provider {} under client {}",
+                provider,
+                clientId
+        );
+
+        return authUrl;
     }
 
     // Make sure to inject OAuthCodeService and OAuth2Service into the constructor!
 
     public String handleProviderCallback(OAuthProvider provider, String providerCode, String state) {
+        log.info(
+                "Received OAuth callback for provider {}",
+                provider
+        );
+
         OAuthStateContext stateContext = stateService.validateAndConsumeState(state);
-        if (stateContext.provider() != provider)
-            throw new RuntimeException("OAuth provider mismatch");
+        if (stateContext.provider() != provider){
+            throw new InvalidOAuthProviderException("OAuth provider mismatch");
+        }
+
+        log.info(
+                "OAuth state validated for provider {} and client {}",
+                provider,
+                stateContext.clientId()
+        );
 
         Client client = clientRepository.findByIdAndIsActiveTrue(stateContext.clientId())
-                .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
+                .orElseThrow(() -> new ClientNotFoundException("Invalid Client ID"));
 
         OAuthProviderStrategy strategy = strategyMap.get(provider);
         OAuth2UserInfo userInfo = strategy.fetchUserInfo(providerCode);
 
         AuthResponse authResponse = oAuth2Service.processOAuthUser(client, userInfo, provider);
 
+        log.info(
+                "OAuth provider {} authenticated user {}",
+                provider,
+                userInfo.email()
+        );
+
         // Lock the JWTs in Redis for 30 seconds
         String authCode = codeService.saveAuthResponse(authResponse);
+
+        log.info(
+                "Generated OAuth bridge code for provider {} and client {}",
+                provider,
+                client.getId()
+        );
 
         // Construct the frontend redirect URL
         return client.getRedirectUrl() + "/oauth/callback?code=" + authCode;
@@ -87,6 +129,12 @@ public class OAuthOrchestratorService {
 
     // 2. Exchange the code for the tokens
     public AuthResponse exchangeCodeForTokens(OAuthExchangeRequest request) {
+
+        log.info(
+                "OAuth token exchange requested for client {}",
+                request.clientId()
+        );
+
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
                 .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
 
@@ -95,7 +143,14 @@ public class OAuthOrchestratorService {
             throw new InvalidClientSecretException("Invalid client secret");
         }
 
+        AuthResponse response = codeService.consumeAuthCode(request.code());
+
+        log.info(
+                "OAuth token exchange completed for client {}",
+                request.clientId()
+        );
+
         // Unlock the Redis Locker (burns the code instantly)
-        return codeService.consumeAuthCode(request.code());
+        return response;
     }
 }
