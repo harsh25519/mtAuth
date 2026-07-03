@@ -32,7 +32,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(
             @Valid @RequestBody LocalSignupRequest request) {
-        // The Controller simply hands the validated request to the Orchestrator
+
         localAuthOrchestrator.registerUserAndDispatchEmail(request);
 
         // And returns the success response
