@@ -3,12 +3,12 @@ package bdj.hkb.auth_service.auth;
 import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
 import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthStateException;
 import bdj.hkb.auth_service.exceptionHandler.OAuthCodeDeserializationException;
+import bdj.hkb.auth_service.exceptionHandler.OAuthCodeSerializationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -46,7 +46,7 @@ public class OAuthStateService {
 
             return state;
         } catch (JsonProcessingException e) {
-            throw new OAuth2AuthenticationException("Failed to serialize OAuth state context");
+            throw new OAuthCodeSerializationException("Failed to serialize OAuth state context");
         }
     }
 
