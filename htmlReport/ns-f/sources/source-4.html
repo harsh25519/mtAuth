@@ -1,0 +1,274 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > UserService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.user</a>
+</div>
+
+<h1>Coverage Summary for Class: UserService (bdj.hkb.auth_service.user)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">UserService</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (8/8)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    83.3%
+  </span>
+  <span class="absValue">
+    (10/12)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (49/49)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.user;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+&nbsp;import bdj.hkb.auth_service.role.UserRole;
+&nbsp;import bdj.hkb.auth_service.role.UserRoleRepository;
+&nbsp;import bdj.hkb.auth_service.user.dto.UserResponse;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.beans.factory.annotation.Value;
+&nbsp;import org.springframework.data.domain.Page;
+&nbsp;import org.springframework.data.domain.PageImpl;
+&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import org.springframework.security.access.AccessDeniedException;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Map;
+&nbsp;import java.util.UUID;
+&nbsp;import java.util.stream.Collectors;
+&nbsp;
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;public class UserService {
+&nbsp;
+&nbsp;    private final UserRepository userRepository;
+&nbsp;    private final UserRoleRepository userRoleRepository;
+&nbsp;
+&nbsp;    @Value(&quot;${platform.master-client-id}&quot;)
+&nbsp;    private String masterClientId;
+&nbsp;
+&nbsp;    public Page&lt;UserResponse&gt; getAllUsers(String tokenClientId, Pageable pageable) {
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Global user listing requested by client {}&quot;,
+&nbsp;                tokenClientId
+&nbsp;        );
+&nbsp;
+&nbsp;        // SECURITY: Only the platform admin can fetch everyone
+<b class="fc">&nbsp;        if (!masterClientId.equals(tokenClientId)) {</b>
+<b class="fc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;Unauthorized attempt to fetch all users by client {}&quot;,
+&nbsp;                    tokenClientId
+&nbsp;            );
+<b class="fc">&nbsp;            throw new AccessDeniedException(&quot;Unauthorized: Only platform admins can view all users globally.&quot;);</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        Page&lt;User&gt; userPage = userRepository.findAllWithClient(pageable);</b>
+&nbsp;
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Returned {} users to client {}&quot;,
+<b class="fc">&nbsp;                userPage.getNumberOfElements(),</b>
+&nbsp;                tokenClientId
+&nbsp;        );
+&nbsp;
+<b class="fc">&nbsp;        return mapToResponsePage(userPage);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    public Page&lt;UserResponse&gt; getUsersByClientId(UUID requestedClientId, String tokenClientId, Pageable pageable) {
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;User listing requested for client {} by client {}&quot;,
+&nbsp;                requestedClientId,
+&nbsp;                tokenClientId
+&nbsp;        );
+&nbsp;        // SECURITY: You can only view users in your own tenant (or if you are the master admin)
+<b class="fc">&nbsp;        if (!requestedClientId.toString().equals(tokenClientId) &amp;&amp; !masterClientId.equals(tokenClientId)) {</b>
+<b class="fc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;Cross-tenant user listing attempt. Requested client {}, requester client {}&quot;,
+&nbsp;                    requestedClientId,
+&nbsp;                    tokenClientId
+&nbsp;            );
+<b class="fc">&nbsp;            throw new AccessDeniedException(&quot;Unauthorized: You cannot view users belonging to another tenant.&quot;);</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        Page&lt;User&gt; userPage = userRepository.findByClientIdWithClient(requestedClientId, pageable);</b>
+&nbsp;
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Returned {} users for client {}&quot;,
+<b class="fc">&nbsp;                userPage.getNumberOfElements(),</b>
+&nbsp;                requestedClientId
+&nbsp;        );
+&nbsp;
+<b class="fc">&nbsp;        return mapToResponsePage(userPage);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // --- MAPPING LOGIC ---
+&nbsp;    private Page&lt;UserResponse&gt; mapToResponsePage(Page&lt;User&gt; userPage) {
+<b class="fc">&nbsp;        List&lt;User&gt; users = userPage.getContent();</b>
+<b class="fc">&nbsp;        Map&lt;UUID, List&lt;String&gt;&gt; rolesByUserId = fetchRolesGrouped(users);</b>
+&nbsp;
+<b class="fc">&nbsp;        List&lt;UserResponse&gt; responses = users.stream()</b>
+<b class="fc">&nbsp;                .map(user -&gt; toResponse(user, rolesByUserId.getOrDefault(user.getId(), List.of())))</b>
+<b class="fc">&nbsp;                .toList();</b>
+&nbsp;
+<b class="fc">&nbsp;        return new PageImpl&lt;&gt;(responses, userPage.getPageable(), userPage.getTotalElements());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private Map&lt;UUID, List&lt;String&gt;&gt; fetchRolesGrouped(List&lt;User&gt; users) {
+<b class="fc">&nbsp;        List&lt;UUID&gt; userIds = users.stream().map(User::getId).toList();</b>
+<b class="pc">&nbsp;        if (userIds.isEmpty()) return Map.of();</b>
+&nbsp;
+<b class="fc">&nbsp;        return userRoleRepository.findByUserIds(userIds).stream()</b>
+<b class="fc">&nbsp;                .collect(Collectors.groupingBy(</b>
+<b class="fc">&nbsp;                        ur -&gt; ur.getUser().getId(),</b>
+<b class="fc">&nbsp;                        Collectors.mapping(UserRole::getRole, Collectors.toList())</b>
+&nbsp;                ));
+&nbsp;    }
+&nbsp;
+&nbsp;    // --- Single User Lookup ---
+&nbsp;    public UserResponse getUserById(UUID requestedUserId, String tokenClientId) {
+&nbsp;
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;User {} details requested by client {}&quot;,
+&nbsp;                requestedUserId,
+&nbsp;                tokenClientId
+&nbsp;        );
+&nbsp;
+&nbsp;        // 1. Fetch the user
+<b class="fc">&nbsp;        User user = userRepository.findById(requestedUserId)</b>
+<b class="fc">&nbsp;                .orElseThrow(() -&gt; new UserNotFoundException(&quot;User not found&quot;));</b>
+&nbsp;
+&nbsp;        // 2. SECURITY CHECK: Prevent cross-tenant ID guessing
+<b class="fc">&nbsp;        String targetUserClientId = user.getClient().getId().toString();</b>
+<b class="pc">&nbsp;        if (!targetUserClientId.equals(tokenClientId) &amp;&amp; !masterClientId.equals(tokenClientId)) {</b>
+<b class="fc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;Unauthorized access attempt to user {} by client {}&quot;,
+&nbsp;                    requestedUserId,
+&nbsp;                    tokenClientId
+&nbsp;            );
+<b class="fc">&nbsp;            throw new AccessDeniedException(&quot;Unauthorized: You do not have permission to view this user&#39;s details.&quot;);</b>
+&nbsp;        }
+&nbsp;
+&nbsp;        // 3. Fetch roles for this specific user
+<b class="fc">&nbsp;        List&lt;String&gt; roles = userRoleRepository.findByUserIdAndClientId(user.getId(), user.getClient().getId())</b>
+<b class="fc">&nbsp;                .stream()</b>
+<b class="fc">&nbsp;                .map(UserRole::getRole)</b>
+<b class="fc">&nbsp;                .toList();</b>
+&nbsp;
+&nbsp;
+<b class="fc">&nbsp;        log.info(</b>
+&nbsp;                &quot;User {} details returned successfully&quot;,
+&nbsp;                requestedUserId
+&nbsp;        );
+&nbsp;        // 4. Map to DTO
+<b class="fc">&nbsp;        return toResponse(user, roles);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private UserResponse toResponse(User user, List&lt;String&gt; roles) {
+<b class="fc">&nbsp;        return new UserResponse(</b>
+<b class="fc">&nbsp;                user.getId(),</b>
+<b class="fc">&nbsp;                user.getEmail(),</b>
+<b class="fc">&nbsp;                user.getClient().getId(),</b>
+<b class="fc">&nbsp;                user.getIsActive(),</b>
+<b class="fc">&nbsp;                user.getAuthProvider(),</b>
+&nbsp;                roles,
+<b class="fc">&nbsp;                user.getCreatedAt()</b>
+&nbsp;        );
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

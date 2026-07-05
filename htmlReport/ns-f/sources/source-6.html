@@ -1,0 +1,134 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > User</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.user</a>
+</div>
+
+<h1>Coverage Summary for Class: User (bdj.hkb.auth_service.user)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+</tr>
+  <tr>
+    <td class="name">User$HibernateInstantiator</td>
+  </tr>
+  <tr>
+    <td class="name">User$HibernateProxy</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.user;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.Client;
+&nbsp;import jakarta.persistence.*;
+&nbsp;import lombok.*;
+&nbsp;import org.hibernate.annotations.CreationTimestamp;
+&nbsp;import org.hibernate.annotations.UpdateTimestamp;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;@Entity
+&nbsp;@Table(name = &quot;users&quot;, uniqueConstraints = {
+&nbsp;        @UniqueConstraint(columnNames = {&quot;client_id&quot;, &quot;email&quot;})
+&nbsp;})
+&nbsp;@NoArgsConstructor
+&nbsp;@Getter
+&nbsp;@Setter
+&nbsp;@AllArgsConstructor
+&nbsp;@Builder
+&nbsp;public class User {
+&nbsp;
+&nbsp;    @Id
+&nbsp;    @GeneratedValue(strategy = GenerationType.UUID)
+&nbsp;    @Column(name = &quot;id&quot;)
+&nbsp;    private UUID id;
+&nbsp;
+&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
+&nbsp;    @JoinColumn(name = &quot;client_id&quot;, nullable = false)
+&nbsp;    private Client client;
+&nbsp;
+&nbsp;    @Column(name = &quot;email&quot;, nullable = false)
+&nbsp;    private String email;
+&nbsp;
+&nbsp;    @Column(name = &quot;password_hash&quot;)
+&nbsp;    private String passwordHash;
+&nbsp;
+&nbsp;    @Column(name = &quot;auth_provider&quot;, nullable = false)
+&nbsp;    private String authProvider;
+&nbsp;
+&nbsp;    @Column(name = &quot;provider_id&quot;)
+&nbsp;    private String providerId;
+&nbsp;
+&nbsp;    @Column(name = &quot;is_active&quot;)
+&nbsp;    @Builder.Default
+&nbsp;    private Boolean isActive = true;
+&nbsp;
+&nbsp;    @CreationTimestamp
+&nbsp;    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+&nbsp;    private OffsetDateTime createdAt;
+&nbsp;
+&nbsp;    @UpdateTimestamp
+&nbsp;    @Column(name = &quot;updated_at&quot;, nullable = false)
+&nbsp;    private OffsetDateTime updatedAt;
+&nbsp;
+&nbsp;    @Column(name = &quot;is_email_verified&quot;, nullable = false)
+&nbsp;    @Builder.Default
+&nbsp;    private Boolean isEmailVerified = true;
+&nbsp;
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

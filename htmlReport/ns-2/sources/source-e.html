@@ -1,0 +1,305 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > OAuthOrchestratorServiceTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.auth</a>
+</div>
+
+<h1>Coverage Summary for Class: OAuthOrchestratorServiceTest (bdj.hkb.auth_service.auth)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">OAuthOrchestratorServiceTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (12/12)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (58/58)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.auth;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.auth.dto.AuthResponse;
+&nbsp;import bdj.hkb.auth_service.auth.dto.OAuth2UserInfo;
+&nbsp;import bdj.hkb.auth_service.auth.dto.OAuthExchangeRequest;
+&nbsp;import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
+&nbsp;import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
+&nbsp;import bdj.hkb.auth_service.client.Client;
+&nbsp;import bdj.hkb.auth_service.client.ClientRepository;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.InvalidClientSecretException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthProviderException;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.junit.jupiter.api.extension.ExtendWith;
+&nbsp;import org.mockito.Mock;
+&nbsp;import org.mockito.junit.jupiter.MockitoExtension;
+&nbsp;import org.springframework.security.crypto.password.PasswordEncoder;
+&nbsp;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.assertj.core.api.Assertions.assertThat;
+&nbsp;import static org.junit.jupiter.api.Assertions.assertThrows;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;
+&nbsp;@ExtendWith(MockitoExtension.class)
+<b class="fc">&nbsp;class OAuthOrchestratorServiceTest {</b>
+&nbsp;
+&nbsp;    @Mock private ClientRepository clientRepository;
+&nbsp;    @Mock private OAuthStateService stateService;
+&nbsp;    @Mock private OAuthCodeService codeService;
+&nbsp;    @Mock private OAuth2Service oAuth2Service;
+&nbsp;    @Mock private PasswordEncoder passwordEncoder;
+&nbsp;
+&nbsp;    @Mock private OAuthProviderStrategy googleStrategy;
+&nbsp;
+&nbsp;    private OAuthOrchestratorService orchestratorService;
+&nbsp;
+&nbsp;    // --- Constants ---
+<b class="fc">&nbsp;    private static final UUID CLIENT_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String STATE_STRING = &quot;secure-random-state-123&quot;;
+&nbsp;    private static final String AUTH_CODE = &quot;bridge-code-xyz&quot;;
+&nbsp;    private static final String PROVIDER_CODE = &quot;google-auth-code&quot;;
+&nbsp;    private static final String REDIRECT_URL = &quot;https://frontend.app&quot;;
+&nbsp;    private static final String RAW_SECRET = &quot;raw-secret&quot;;
+&nbsp;    private static final String ENCODED_SECRET = &quot;encoded-secret&quot;;
+&nbsp;
+&nbsp;    private Client mockClient;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+&nbsp;        // 1. Setup the Strategy Mock to identify itself as GOOGLE
+<b class="fc">&nbsp;        lenient().when(googleStrategy.getProvider()).thenReturn(OAuthProvider.GOOGLE);</b>
+&nbsp;
+&nbsp;        // 2. Manually initialize the service to trigger the Map conversion logic
+<b class="fc">&nbsp;        orchestratorService = new OAuthOrchestratorService(</b>
+&nbsp;                clientRepository,
+&nbsp;                stateService,
+<b class="fc">&nbsp;                List.of(googleStrategy),</b>
+&nbsp;                codeService,
+&nbsp;                oAuth2Service,
+&nbsp;                passwordEncoder
+&nbsp;        );
+&nbsp;
+<b class="fc">&nbsp;        mockClient = Client.builder()</b>
+<b class="fc">&nbsp;                .id(CLIENT_ID)</b>
+<b class="fc">&nbsp;                .clientSecret(ENCODED_SECRET)</b>
+<b class="fc">&nbsp;                .redirectUrl(REDIRECT_URL)</b>
+<b class="fc">&nbsp;                .isActive(true)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getAuthorizationUrl()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getAuthorizationUrl - Should generate valid provider URL&quot;)
+&nbsp;    void getAuthorizationUrl_WhenValid_ShouldReturnUrl() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String expectedUrl = &quot;https://google.com/oauth?state=&quot; + STATE_STRING;</b>
+&nbsp;
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</b>
+<b class="fc">&nbsp;        when(stateService.generateAndSaveState(CLIENT_ID, OAuthProvider.GOOGLE)).thenReturn(STATE_STRING);</b>
+<b class="fc">&nbsp;        when(googleStrategy.buildAuthorizationUrl(STATE_STRING)).thenReturn(expectedUrl);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        String result = orchestratorService.getAuthorizationUrl(OAuthProvider.GOOGLE, CLIENT_ID);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result).isEqualTo(expectedUrl);</b>
+<b class="fc">&nbsp;        verify(stateService).generateAndSaveState(CLIENT_ID, OAuthProvider.GOOGLE);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getAuthorizationUrl - Should throw IllegalArgumentException for unsupported provider&quot;)
+&nbsp;    void getAuthorizationUrl_WhenStrategyMissing_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</b>
+<b class="fc">&nbsp;        when(stateService.generateAndSaveState(CLIENT_ID, OAuthProvider.GITHUB)).thenReturn(STATE_STRING);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            orchestratorService.getAuthorizationUrl(OAuthProvider.GITHUB, CLIENT_ID);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).contains(&quot;No strategy configured for provider&quot;);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for handleProviderCallback()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;handleProviderCallback - Should process user, lock tokens, and return redirect URL&quot;)
+&nbsp;    void handleProviderCallback_WhenValid_ShouldReturnRedirectUrl() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        long mockTimestamp = System.currentTimeMillis();</b>
+<b class="fc">&nbsp;        OAuthStateContext context = new OAuthStateContext(CLIENT_ID, OAuthProvider.GOOGLE, mockTimestamp);</b>
+<b class="fc">&nbsp;        OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);</b>
+&nbsp;
+<b class="fc">&nbsp;        AuthResponse tokens = new AuthResponse(&quot;mock-access&quot;, &quot;mock-refresh&quot;, &quot;Bearer&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        when(stateService.validateAndConsumeState(STATE_STRING)).thenReturn(context);</b>
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</b>
+<b class="fc">&nbsp;        when(googleStrategy.fetchUserInfo(PROVIDER_CODE)).thenReturn(userInfo);</b>
+<b class="fc">&nbsp;        when(oAuth2Service.processOAuthUser(mockClient, userInfo, OAuthProvider.GOOGLE)).thenReturn(tokens);</b>
+<b class="fc">&nbsp;        when(codeService.saveAuthResponse(tokens)).thenReturn(AUTH_CODE);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        String redirectUrl = orchestratorService.handleProviderCallback(OAuthProvider.GOOGLE, PROVIDER_CODE, STATE_STRING);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(redirectUrl).isEqualTo(REDIRECT_URL + &quot;/oauth/callback?code=&quot; + AUTH_CODE);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(googleStrategy).fetchUserInfo(PROVIDER_CODE);</b>
+<b class="fc">&nbsp;        verify(oAuth2Service).processOAuthUser(mockClient, userInfo, OAuthProvider.GOOGLE);</b>
+<b class="fc">&nbsp;        verify(codeService).saveAuthResponse(tokens);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;handleProviderCallback - Should throw exception on Provider hijacking attempt (State mismatch)&quot;)
+&nbsp;    void handleProviderCallback_WhenProviderMismatch_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        long mockTimestamp = System.currentTimeMillis();</b>
+<b class="fc">&nbsp;        OAuthStateContext hijackedContext = new OAuthStateContext(CLIENT_ID, OAuthProvider.GITHUB, mockTimestamp);</b>
+<b class="fc">&nbsp;        when(stateService.validateAndConsumeState(STATE_STRING)).thenReturn(hijackedContext);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        InvalidOAuthProviderException exception = assertThrows(InvalidOAuthProviderException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            orchestratorService.handleProviderCallback(OAuthProvider.GOOGLE, PROVIDER_CODE, STATE_STRING);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;OAuth provider mismatch&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(googleStrategy, never()).fetchUserInfo(anyString());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for exchangeCodeForTokens()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;exchangeCodeForTokens - Should validate secret, consume code, and return tokens&quot;)
+&nbsp;    void exchangeCodeForTokens_WhenValid_ShouldReturnTokens() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        OAuthExchangeRequest request = new OAuthExchangeRequest(AUTH_CODE, CLIENT_ID, RAW_SECRET);</b>
+&nbsp;
+<b class="fc">&nbsp;        AuthResponse expectedTokens = new AuthResponse(&quot;access&quot;, &quot;refresh&quot;, &quot;Bearer&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</b>
+<b class="fc">&nbsp;        when(passwordEncoder.matches(RAW_SECRET, ENCODED_SECRET)).thenReturn(true);</b>
+<b class="fc">&nbsp;        when(codeService.consumeAuthCode(AUTH_CODE)).thenReturn(expectedTokens);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        AuthResponse result = orchestratorService.exchangeCodeForTokens(request);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result).isEqualTo(expectedTokens);</b>
+<b class="fc">&nbsp;        verify(codeService).consumeAuthCode(AUTH_CODE);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;exchangeCodeForTokens - Should throw InvalidClientSecretException for wrong secret&quot;)
+&nbsp;    void exchangeCodeForTokens_WhenInvalidSecret_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        OAuthExchangeRequest request = new OAuthExchangeRequest(AUTH_CODE, CLIENT_ID, &quot;wrong-secret&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</b>
+<b class="fc">&nbsp;        when(passwordEncoder.matches(&quot;wrong-secret&quot;, ENCODED_SECRET)).thenReturn(false);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(InvalidClientSecretException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            orchestratorService.exchangeCodeForTokens(request);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        verify(codeService, never()).consumeAuthCode(anyString());</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

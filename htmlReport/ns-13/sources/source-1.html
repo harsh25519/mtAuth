@@ -1,0 +1,212 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > PasswordResetService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.user.passwordReset</a>
+</div>
+
+<h1>Coverage Summary for Class: PasswordResetService (bdj.hkb.auth_service.user.passwordReset)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">PasswordResetService</td>
+<td class="coverageStat">
+  <span class="percent">
+    33.3%
+  </span>
+  <span class="absValue">
+    (1/3)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    4%
+  </span>
+  <span class="absValue">
+    (1/25)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">PasswordResetService$$SpringCGLIB$$0</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    33.3%
+  </span>
+  <span class="absValue">
+    (1/3)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    4%
+  </span>
+  <span class="absValue">
+    (1/25)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.user.passwordReset;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.InvalidPasswordResetTokenException;
+&nbsp;import bdj.hkb.auth_service.user.User;
+&nbsp;import bdj.hkb.auth_service.user.UserRepository;
+&nbsp;import bdj.hkb.auth_service.utils.TokenUtils;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.security.crypto.password.PasswordEncoder;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;import org.springframework.transaction.annotation.Transactional;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;public class PasswordResetService {
+&nbsp;
+&nbsp;    private final PasswordResetTokenRepository tokenRepository;
+&nbsp;    private final UserRepository userRepository;
+&nbsp;    private final PasswordEncoder passwordEncoder;
+&nbsp;
+&nbsp;    @Transactional
+&nbsp;    public String createResetToken(User user) {
+&nbsp;        // Clear any old, unused reset tokens for this user
+<b class="nc">&nbsp;        tokenRepository.deleteByUser(user);</b>
+&nbsp;
+<b class="nc">&nbsp;        String token = TokenUtils.generateSecureToken();</b>
+&nbsp;
+<b class="nc">&nbsp;        PasswordResetToken resetToken = PasswordResetToken.builder()</b>
+<b class="nc">&nbsp;                .token(token)</b>
+<b class="nc">&nbsp;                .user(user)</b>
+<b class="nc">&nbsp;                .expiresAt(OffsetDateTime.now().plusMinutes(15)) // 15-minute expiry for security</b>
+<b class="nc">&nbsp;                .build();</b>
+&nbsp;
+<b class="nc">&nbsp;        tokenRepository.save(resetToken);</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Password reset token generated for user {}&quot;,
+<b class="nc">&nbsp;                user.getId()</b>
+&nbsp;        );
+&nbsp;
+<b class="nc">&nbsp;        return token;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Transactional
+&nbsp;    public void executePasswordReset(String token, String newRawPassword) {
+&nbsp;        // 1. Find the token
+<b class="nc">&nbsp;        PasswordResetToken resetToken = tokenRepository.findByToken(token)</b>
+<b class="nc">&nbsp;                .orElseThrow(() -&gt; new InvalidPasswordResetTokenException(&quot;Invalid password reset token&quot;));</b>
+&nbsp;
+&nbsp;        // 2. Check Expiration
+<b class="nc">&nbsp;        if (resetToken.getExpiresAt().isBefore(OffsetDateTime.now())) {</b>
+<b class="nc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;Expired password reset token used for user {}&quot;,
+<b class="nc">&nbsp;                    resetToken.getUser().getId()</b>
+&nbsp;            );
+&nbsp;
+<b class="nc">&nbsp;            tokenRepository.delete(resetToken);</b>
+<b class="nc">&nbsp;            throw new RuntimeException(&quot;Reset token has expired. Please request a new one.&quot;);</b>
+&nbsp;        }
+&nbsp;
+&nbsp;        // 3. Hash and update the password
+<b class="nc">&nbsp;        User user = resetToken.getUser();</b>
+<b class="nc">&nbsp;        user.setPasswordHash(passwordEncoder.encode(newRawPassword));</b>
+<b class="nc">&nbsp;        userRepository.save(user);</b>
+&nbsp;
+&nbsp;        // 4. Burn the token so it cannot be used twice
+<b class="nc">&nbsp;        tokenRepository.delete(resetToken);</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Password successfully reset for user {}&quot;,
+<b class="nc">&nbsp;                user.getId()</b>
+&nbsp;        );
+&nbsp;
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

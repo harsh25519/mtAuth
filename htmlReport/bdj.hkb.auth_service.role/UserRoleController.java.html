@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserRoleController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.role</a> &gt; <span class="el_source">UserRoleController.java</span></div><h1>UserRoleController.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.role;
+
+import bdj.hkb.auth_service.role.dto.AssignRoleRequest;
+import bdj.hkb.auth_service.role.dto.RevokeRoleRequest;
+import bdj.hkb.auth_service.security.dto.JwtPrincipal;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping(&quot;/users/roles&quot;)
+public class UserRoleController {
+    private final UserRoleService userRoleService;
+
+    @PostMapping
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;Void&gt; assignRole(
+            @Valid @RequestBody AssignRoleRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+<span class="fc" id="L25">        userRoleService.assignRole(request, principal);</span>
+<span class="fc" id="L26">        return ResponseEntity.status(HttpStatus.CREATED).build();</span>
+    }
+
+    @DeleteMapping
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;Void&gt; revokeRole(
+            @Valid @RequestBody RevokeRoleRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+<span class="fc" id="L34">        userRoleService.revokeRole(request, principal);</span>
+<span class="fc" id="L35">        return ResponseEntity.noContent().build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

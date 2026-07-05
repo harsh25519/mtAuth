@@ -1,0 +1,255 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > UserControllerTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.user</a>
+</div>
+
+<h1>Coverage Summary for Class: UserControllerTest (bdj.hkb.auth_service.user)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">UserControllerTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (6/6)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (42/42)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.user;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.security.JwtFilter;
+&nbsp;import bdj.hkb.auth_service.security.JwtUtilService;
+&nbsp;import bdj.hkb.auth_service.user.dto.UserResponse;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.springframework.beans.factory.annotation.Autowired;
+&nbsp;import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+&nbsp;import org.springframework.data.domain.Page;
+&nbsp;import org.springframework.data.domain.PageImpl;
+&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import org.springframework.test.context.bean.override.mockito.MockitoBean;
+&nbsp;import org.springframework.test.web.servlet.MockMvc;
+&nbsp;import tools.jackson.databind.json.JsonMapper;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.List;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.mockito.ArgumentMatchers.any;
+&nbsp;import static org.mockito.ArgumentMatchers.eq;
+&nbsp;import static org.mockito.Mockito.verify;
+&nbsp;import static org.mockito.Mockito.when;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+&nbsp;
+&nbsp;@WebMvcTest(
+&nbsp;        controllers = UserController.class,
+&nbsp;        excludeAutoConfiguration = {SecurityAutoConfiguration.class} // Prevents 401 Unauthorized fallback
+&nbsp;)
+&nbsp;@AutoConfigureMockMvc(addFilters = false) // Disables standard security filters for unit testing
+<b class="fc">&nbsp;class UserControllerTest {</b>
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private MockMvc mockMvc;
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private JsonMapper objectMapper;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private UserService userService;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtUtilService jwtUtil;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtFilter jwtFilter;
+&nbsp;
+&nbsp;    // --- Constants ---
+<b class="fc">&nbsp;    private static final UUID TARGET_USER_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final UUID TARGET_CLIENT_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final String TOKEN_CLIENT_ID_STR = UUID.randomUUID().toString();</b>
+&nbsp;    private static final String MOCK_TOKEN = &quot;mock.jwt.token&quot;;
+&nbsp;    private static final String AUTH_HEADER = &quot;Bearer &quot; + MOCK_TOKEN;
+&nbsp;
+&nbsp;    private UserResponse userResponse;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        userResponse = new UserResponse(</b>
+&nbsp;                TARGET_USER_ID,
+&nbsp;                &quot;user@example.com&quot;,
+&nbsp;                TARGET_CLIENT_ID,
+&nbsp;                true,
+&nbsp;                &quot;local&quot;,
+<b class="fc">&nbsp;                List.of(&quot;ROLE_USER&quot;),</b>
+<b class="fc">&nbsp;                OffsetDateTime.now()</b>
+&nbsp;        );
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /users
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /users - Should return 200 OK with paginated users across all tenants&quot;)
+&nbsp;    void getAllUsers_WhenValidRequest_ShouldReturnPage() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;UserResponse&gt; pagedResponse = new PageImpl&lt;&gt;(List.of(userResponse));</b>
+&nbsp;
+<b class="fc">&nbsp;        when(jwtUtil.extractClientId(MOCK_TOKEN)).thenReturn(TOKEN_CLIENT_ID_STR);</b>
+<b class="fc">&nbsp;        when(userService.getAllUsers(eq(TOKEN_CLIENT_ID_STR), any(Pageable.class))).thenReturn(pagedResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/users&quot;)</b>
+<b class="fc">&nbsp;                        .header(&quot;Authorization&quot;, AUTH_HEADER)</b>
+<b class="fc">&nbsp;                        .param(&quot;page&quot;, &quot;0&quot;)</b>
+<b class="fc">&nbsp;                        .param(&quot;size&quot;, &quot;10&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.content[0].id&quot;).value(TARGET_USER_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.content[0].email&quot;).value(&quot;user@example.com&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.totalElements&quot;).value(1));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(jwtUtil).extractClientId(MOCK_TOKEN);</b>
+<b class="fc">&nbsp;        verify(userService).getAllUsers(eq(TOKEN_CLIENT_ID_STR), any(Pageable.class));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /users/client/{clientId}
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /users/client/{clientId} - Should return 200 OK with paginated users for specific tenant&quot;)
+&nbsp;    void getUsersByClientId_WhenValidRequest_ShouldReturnPage() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;UserResponse&gt; pagedResponse = new PageImpl&lt;&gt;(List.of(userResponse));</b>
+&nbsp;
+<b class="fc">&nbsp;        when(jwtUtil.extractClientId(MOCK_TOKEN)).thenReturn(TOKEN_CLIENT_ID_STR);</b>
+<b class="fc">&nbsp;        when(userService.getUsersByClientId(eq(TARGET_CLIENT_ID), eq(TOKEN_CLIENT_ID_STR), any(Pageable.class)))</b>
+<b class="fc">&nbsp;                .thenReturn(pagedResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/users/client/{clientId}&quot;, TARGET_CLIENT_ID)</b>
+<b class="fc">&nbsp;                        .header(&quot;Authorization&quot;, AUTH_HEADER)</b>
+<b class="fc">&nbsp;                        .param(&quot;page&quot;, &quot;1&quot;)</b>
+<b class="fc">&nbsp;                        .param(&quot;size&quot;, &quot;20&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.content[0].id&quot;).value(TARGET_USER_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.totalElements&quot;).value(1));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(jwtUtil).extractClientId(MOCK_TOKEN);</b>
+<b class="fc">&nbsp;        verify(userService).getUsersByClientId(eq(TARGET_CLIENT_ID), eq(TOKEN_CLIENT_ID_STR), any(Pageable.class));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /users/{userId}
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /users/{userId} - Should return 200 OK with single user response&quot;)
+&nbsp;    void getUserById_WhenValidRequest_ShouldReturnUser() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(jwtUtil.extractClientId(MOCK_TOKEN)).thenReturn(TOKEN_CLIENT_ID_STR);</b>
+<b class="fc">&nbsp;        when(userService.getUserById(TARGET_USER_ID, TOKEN_CLIENT_ID_STR)).thenReturn(userResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/users/{userId}&quot;, TARGET_USER_ID)</b>
+<b class="fc">&nbsp;                        .header(&quot;Authorization&quot;, AUTH_HEADER))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.id&quot;).value(TARGET_USER_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.email&quot;).value(&quot;user@example.com&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(jwtUtil).extractClientId(MOCK_TOKEN);</b>
+<b class="fc">&nbsp;        verify(userService).getUserById(TARGET_USER_ID, TOKEN_CLIENT_ID_STR);</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,283 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > EmailVerificationTokenRepositoryTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.email</a>
+</div>
+
+<h1>Coverage Summary for Class: EmailVerificationTokenRepositoryTest (bdj.hkb.auth_service.email)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">EmailVerificationTokenRepositoryTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (13/13)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (62/62)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.email;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.Client;
+&nbsp;import bdj.hkb.auth_service.user.User;
+&nbsp;import bdj.hkb.auth_service.user.emailVerification.EmailVerificationToken;
+&nbsp;import bdj.hkb.auth_service.user.emailVerification.EmailVerificationTokenRepository;
+&nbsp;import jakarta.persistence.PersistenceException;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.springframework.beans.factory.annotation.Autowired;
+&nbsp;import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+&nbsp;import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.Optional;
+&nbsp;
+&nbsp;import static org.assertj.core.api.Assertions.assertThat;
+&nbsp;import static org.junit.jupiter.api.Assertions.assertThrows;
+&nbsp;
+&nbsp;@DataJpaTest
+<b class="fc">&nbsp;class EmailVerificationTokenRepositoryTest {</b>
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private TestEntityManager entityManager;
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private EmailVerificationTokenRepository tokenRepository;
+&nbsp;
+&nbsp;    // --- Constants ---
+&nbsp;    private static final String VALID_TOKEN = &quot;verify-me-12345&quot;;
+&nbsp;    private static final String UNKNOWN_TOKEN = &quot;invalid-token-999&quot;;
+&nbsp;    private static final String USER_EMAIL_1 = &quot;alice@example.com&quot;;
+&nbsp;    private static final String USER_EMAIL_2 = &quot;bob@example.com&quot;;
+&nbsp;
+&nbsp;    private User userWithToken;
+&nbsp;    private User userWithoutToken;
+&nbsp;    private EmailVerificationToken savedToken;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+&nbsp;        // Arrange: Setup Client -&gt; User -&gt; Token hierarchy
+<b class="fc">&nbsp;        Client client = Client.builder()</b>
+<b class="fc">&nbsp;                .name(&quot;Primary App&quot;)</b>
+<b class="fc">&nbsp;                .clientSecret(&quot;secret1&quot;)</b>
+<b class="fc">&nbsp;                .redirectUrl(&quot;http://localhost/cb&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+<b class="fc">&nbsp;        client = entityManager.persistAndFlush(client);</b>
+&nbsp;
+<b class="fc">&nbsp;        User user1 = User.builder()</b>
+<b class="fc">&nbsp;                .client(client)</b>
+<b class="fc">&nbsp;                .email(USER_EMAIL_1)</b>
+<b class="fc">&nbsp;                .authProvider(&quot;LOCAL&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+<b class="fc">&nbsp;        userWithToken = entityManager.persistAndFlush(user1);</b>
+&nbsp;
+<b class="fc">&nbsp;        User user2 = User.builder()</b>
+<b class="fc">&nbsp;                .client(client)</b>
+<b class="fc">&nbsp;                .email(USER_EMAIL_2)</b>
+<b class="fc">&nbsp;                .authProvider(&quot;LOCAL&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+<b class="fc">&nbsp;        userWithoutToken = entityManager.persistAndFlush(user2);</b>
+&nbsp;
+<b class="fc">&nbsp;        EmailVerificationToken token = EmailVerificationToken.builder()</b>
+<b class="fc">&nbsp;                .token(VALID_TOKEN)</b>
+<b class="fc">&nbsp;                .user(userWithToken)</b>
+<b class="fc">&nbsp;                .expiresAt(OffsetDateTime.now().plusDays(1))</b>
+<b class="fc">&nbsp;                .build();</b>
+<b class="fc">&nbsp;        savedToken = entityManager.persistAndFlush(token);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should find token entity by its exact string value&quot;)
+&nbsp;    void findByToken_WhenExists_ShouldReturnToken() {
+&nbsp;        // Act
+<b class="fc">&nbsp;        Optional&lt;EmailVerificationToken&gt; found = tokenRepository.findByToken(VALID_TOKEN);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(found).isPresent();</b>
+<b class="fc">&nbsp;        assertThat(found.get().getUser().getEmail()).isEqualTo(USER_EMAIL_1);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should return empty when searching by a non-existent token string&quot;)
+&nbsp;    void findByToken_WhenDoesNotExist_ShouldReturnEmpty() {
+&nbsp;        // Act
+<b class="fc">&nbsp;        Optional&lt;EmailVerificationToken&gt; found = tokenRepository.findByToken(UNKNOWN_TOKEN);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(found).isEmpty();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should find the token associated with a specific User&quot;)
+&nbsp;    void findByUser_WhenUserHasToken_ShouldReturnToken() {
+&nbsp;        // Act
+<b class="fc">&nbsp;        Optional&lt;EmailVerificationToken&gt; found = tokenRepository.findByUser(userWithToken);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(found).isPresent();</b>
+<b class="fc">&nbsp;        assertThat(found.get().getToken()).isEqualTo(VALID_TOKEN);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should return empty when the User exists but has no token&quot;)
+&nbsp;    void findByUser_WhenUserHasNoToken_ShouldReturnEmpty() {
+&nbsp;        // Act
+<b class="fc">&nbsp;        Optional&lt;EmailVerificationToken&gt; found = tokenRepository.findByUser(userWithoutToken);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(found).isEmpty();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should delete the token associated with a specific User&quot;)
+&nbsp;    void deleteByUser_WhenUserHasToken_ShouldRemoveToken() {
+&nbsp;        // Act
+<b class="fc">&nbsp;        tokenRepository.deleteByUser(userWithToken);</b>
+&nbsp;
+&nbsp;        // Flush the delete to the DB so we can verify it&#39;s gone
+<b class="fc">&nbsp;        entityManager.flush();</b>
+<b class="fc">&nbsp;        entityManager.clear();</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        Optional&lt;EmailVerificationToken&gt; checkToken = tokenRepository.findByToken(VALID_TOKEN);</b>
+<b class="fc">&nbsp;        assertThat(checkToken).isEmpty();</b>
+&nbsp;
+<b class="fc">&nbsp;        User checkUser = entityManager.find(User.class, userWithToken.getId());</b>
+<b class="fc">&nbsp;        assertThat(checkUser).isNotNull();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should throw exception when trying to save a token string that already exists (Unique Constraint)&quot;)
+&nbsp;    void save_WhenTokenStringAlreadyExists_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        EmailVerificationToken duplicateToken = EmailVerificationToken.builder()</b>
+<b class="fc">&nbsp;                .token(VALID_TOKEN)</b>
+<b class="fc">&nbsp;                .user(userWithoutToken)</b>
+<b class="fc">&nbsp;                .expiresAt(OffsetDateTime.now().plusDays(1))</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(PersistenceException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            entityManager.persistAndFlush(duplicateToken);</b>
+&nbsp;        });
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should throw exception when saving without a required token string (Nullable = false)&quot;)
+&nbsp;    void save_WhenTokenStringIsMissing_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        EmailVerificationToken invalidToken = EmailVerificationToken.builder()</b>
+&nbsp;                // .token(...) intentionally omitted
+<b class="fc">&nbsp;                .user(userWithoutToken)</b>
+<b class="fc">&nbsp;                .expiresAt(OffsetDateTime.now().plusDays(1))</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(PersistenceException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            entityManager.persistAndFlush(invalidToken);</b>
+&nbsp;        });
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;Should throw exception when attempting to assign a second token to the same User (OneToOne Unique Constraint)&quot;)
+&nbsp;    void save_WhenUserAlreadyHasToken_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        EmailVerificationToken secondTokenForSameUser = EmailVerificationToken.builder()</b>
+<b class="fc">&nbsp;                .token(&quot;a-completely-new-token-string&quot;)</b>
+<b class="fc">&nbsp;                .user(userWithToken)</b>
+<b class="fc">&nbsp;                .expiresAt(OffsetDateTime.now().plusDays(1))</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(PersistenceException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            entityManager.persistAndFlush(secondTokenForSameUser);</b>
+&nbsp;        });
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

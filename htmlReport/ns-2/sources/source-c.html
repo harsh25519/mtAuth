@@ -1,0 +1,241 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > OAuthControllerTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.auth</a>
+</div>
+
+<h1>Coverage Summary for Class: OAuthControllerTest (bdj.hkb.auth_service.auth)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">OAuthControllerTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (6/6)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (32/32)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.auth;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.auth.dto.AuthResponse;
+&nbsp;import bdj.hkb.auth_service.auth.dto.OAuthExchangeRequest;
+&nbsp;import bdj.hkb.auth_service.security.JwtFilter;
+&nbsp;import bdj.hkb.auth_service.security.JwtUtilService;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.springframework.beans.factory.annotation.Autowired;
+&nbsp;import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+&nbsp;import org.springframework.http.MediaType;
+&nbsp;import org.springframework.test.context.bean.override.mockito.MockitoBean;
+&nbsp;import org.springframework.test.web.servlet.MockMvc;
+&nbsp;import tools.jackson.databind.json.JsonMapper;
+&nbsp;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.mockito.ArgumentMatchers.any;
+&nbsp;import static org.mockito.Mockito.verify;
+&nbsp;import static org.mockito.Mockito.when;
+&nbsp;import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+&nbsp;
+&nbsp;@WebMvcTest(
+&nbsp;        controllers = OAuthController.class,
+&nbsp;        excludeAutoConfiguration = {SecurityAutoConfiguration.class}
+&nbsp;)
+&nbsp;@AutoConfigureMockMvc(addFilters = false)
+<b class="fc">&nbsp;class OAuthControllerTest {</b>
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private MockMvc mockMvc;
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private JsonMapper objectMapper;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private OAuthOrchestratorService orchestratorService;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtFilter jwtFilter;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtUtilService jwtUtilService;
+&nbsp;
+&nbsp;    // --- Constants ---
+<b class="fc">&nbsp;    private static final UUID CLIENT_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final String CLIENT_ID_STR = CLIENT_ID.toString();</b>
+&nbsp;    private static final String PROVIDER_STR = &quot;google&quot;;
+<b class="fc">&nbsp;    private static final OAuthProvider PROVIDER_ENUM = OAuthProvider.GOOGLE;</b>
+&nbsp;
+&nbsp;    private static final String OAUTH_AUTH_URL = &quot;https://accounts.google.com/o/oauth2/auth?state=xyz&quot;;
+&nbsp;    private static final String FRONTEND_REDIRECT_URL = &quot;https://frontend.app/oauth/callback?code=bridge-code&quot;;
+&nbsp;    private static final String PROVIDER_CODE = &quot;google-auth-code-123&quot;;
+&nbsp;    private static final String STATE_PARAM = &quot;secure-random-state&quot;;
+&nbsp;    private static final String BRIDGE_CODE = &quot;bridge-code-xyz&quot;;
+&nbsp;    private static final String CLIENT_SECRET = &quot;super-secret&quot;;
+&nbsp;
+&nbsp;    private AuthResponse authResponse;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        authResponse = new AuthResponse(&quot;mock-access&quot;, &quot;mock-refresh&quot;, &quot;Bearer&quot;);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /oauth/{provider}/start
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /oauth/{provider}/start - Should return 302 Found with Auth URL in Location header&quot;)
+&nbsp;    void startOAuth_WhenValidRequest_ShouldRedirectToProvider() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(orchestratorService.getAuthorizationUrl(PROVIDER_ENUM, CLIENT_ID))</b>
+<b class="fc">&nbsp;                .thenReturn(OAUTH_AUTH_URL);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/oauth/{provider}/start&quot;, PROVIDER_STR)</b>
+<b class="fc">&nbsp;                        .param(&quot;clientId&quot;, CLIENT_ID_STR))</b>
+<b class="fc">&nbsp;                .andExpect(status().isFound())</b>
+<b class="fc">&nbsp;                .andExpect(header().string(&quot;Location&quot;, OAUTH_AUTH_URL));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(orchestratorService).getAuthorizationUrl(PROVIDER_ENUM, CLIENT_ID);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /oauth/{provider}/callback
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /oauth/{provider}/callback - Should return 302 Found with Frontend URL in Location header&quot;)
+&nbsp;    void oauthCallback_WhenValidCallback_ShouldRedirectToFrontend() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(orchestratorService.handleProviderCallback(PROVIDER_ENUM, PROVIDER_CODE, STATE_PARAM))</b>
+<b class="fc">&nbsp;                .thenReturn(FRONTEND_REDIRECT_URL);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/oauth/{provider}/callback&quot;, PROVIDER_STR)</b>
+<b class="fc">&nbsp;                        .param(&quot;code&quot;, PROVIDER_CODE)</b>
+<b class="fc">&nbsp;                        .param(&quot;state&quot;, STATE_PARAM))</b>
+<b class="fc">&nbsp;                .andExpect(status().isFound())</b>
+<b class="fc">&nbsp;                .andExpect(header().string(&quot;Location&quot;, FRONTEND_REDIRECT_URL));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(orchestratorService).handleProviderCallback(PROVIDER_ENUM, PROVIDER_CODE, STATE_PARAM);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for POST /oauth/exchange
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /oauth/exchange - Should return 200 OK with AuthResponse on valid code exchange&quot;)
+&nbsp;    void exchangeCode_WhenValidRequest_ShouldReturnTokens() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        OAuthExchangeRequest request = new OAuthExchangeRequest(BRIDGE_CODE, CLIENT_ID, CLIENT_SECRET);</b>
+&nbsp;
+<b class="fc">&nbsp;        when(orchestratorService.exchangeCodeForTokens(any(OAuthExchangeRequest.class)))</b>
+<b class="fc">&nbsp;                .thenReturn(authResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/oauth/exchange&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.accessToken&quot;).value(&quot;mock-access&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.refreshToken&quot;).value(&quot;mock-refresh&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.tokenType&quot;).value(&quot;Bearer&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(orchestratorService).exchangeCodeForTokens(any(OAuthExchangeRequest.class));</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

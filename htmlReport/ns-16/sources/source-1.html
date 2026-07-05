@@ -1,0 +1,178 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > EmailService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.utils</a>
+</div>
+
+<h1>Coverage Summary for Class: EmailService (bdj.hkb.auth_service.utils)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">EmailService</td>
+<td class="coverageStat">
+  <span class="percent">
+    33.3%
+  </span>
+  <span class="absValue">
+    (1/3)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    5.9%
+  </span>
+  <span class="absValue">
+    (1/17)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">EmailService$$SpringCGLIB$$0</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    33.3%
+  </span>
+  <span class="absValue">
+    (1/3)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    5.9%
+  </span>
+  <span class="absValue">
+    (1/17)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.utils;
+&nbsp;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.beans.factory.annotation.Value;
+&nbsp;import org.springframework.mail.MailException;
+&nbsp;import org.springframework.mail.SimpleMailMessage;
+&nbsp;import org.springframework.mail.javamail.JavaMailSender;
+&nbsp;import org.springframework.scheduling.annotation.Async;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;public class EmailService {
+&nbsp;
+&nbsp;    private final JavaMailSender mailSender;
+&nbsp;
+&nbsp;    @Value(&quot;${auth.base.url}&quot;)
+&nbsp;    private String redirectUrl;
+&nbsp;
+&nbsp;    @Async
+&nbsp;    public void sendVerificationEmail(String recipientEmail, String token) {
+&nbsp;
+&nbsp;        // Construct the exact URL the Next.js frontend will use to catch the token
+<b class="nc">&nbsp;        String verificationLink = redirectUrl + &quot;/verify-email?token=&quot; + token;</b>
+&nbsp;
+<b class="nc">&nbsp;        SimpleMailMessage message = new SimpleMailMessage();</b>
+<b class="nc">&nbsp;        message.setTo(recipientEmail);</b>
+<b class="nc">&nbsp;        message.setSubject(&quot;Verify your account&quot;);</b>
+<b class="nc">&nbsp;        message.setText(&quot;Welcome! \n\n&quot; +</b>
+&nbsp;                &quot;Please click the link below to verify your email address and activate your account:\n\n&quot; +
+&nbsp;                verificationLink + &quot;\n\n&quot; +
+&nbsp;                &quot;If you did not request this, please ignore this email.&quot;);
+&nbsp;
+&nbsp;        try {
+<b class="nc">&nbsp;            mailSender.send(message);</b>
+&nbsp;        } catch (MailException e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to send verification email: {}&quot;, recipientEmail, e.getMessage());</b>
+<b class="nc">&nbsp;            throw new RuntimeException(e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    @Async
+&nbsp;    public void sendPasswordResetEmail(String email, String token) {
+<b class="nc">&nbsp;        String resetLink = redirectUrl + &quot;/reset-password?token=&quot; + token;</b>
+&nbsp;
+<b class="nc">&nbsp;        SimpleMailMessage message = new SimpleMailMessage();</b>
+<b class="nc">&nbsp;        message.setTo(email);</b>
+<b class="nc">&nbsp;        message.setSubject(&quot;Password Reset Request&quot;);</b>
+<b class="nc">&nbsp;        message.setText(&quot;Hello, \n\n&quot; +</b>
+&nbsp;                &quot;You have requested to reset your password. Please click the link below to set a new password:\n\n&quot; +
+&nbsp;                resetLink + &quot;\n\n&quot; +
+&nbsp;                &quot;If you did not request this, please ignore this email. This link will expire in 15 minutes.&quot;);
+&nbsp;
+&nbsp;        try {
+<b class="nc">&nbsp;            mailSender.send(message);</b>
+&nbsp;        } catch (MailException e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to send password reset mail: {}&quot;, email, e.getMessage());</b>
+<b class="nc">&nbsp;            throw new RuntimeException(e);</b>
+&nbsp;        }
+&nbsp;
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

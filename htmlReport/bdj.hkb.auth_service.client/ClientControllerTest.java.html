@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientControllerTest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.client</a> &gt; <span class="el_source">ClientControllerTest.java</span></div><h1>ClientControllerTest.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.client;
+
+import bdj.hkb.auth_service.client.dto.ClientResponse;
+import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
+import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
+import bdj.hkb.auth_service.client.dto.UpdateRedirectUrlRequest;
+import bdj.hkb.auth_service.security.JwtFilter;
+import bdj.hkb.auth_service.security.JwtUtilService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(
+        controllers = ClientController.class,
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class} // Prevents 401 Unauthorized fallback
+)
+@AutoConfigureMockMvc(addFilters = false) // Disables standard security filters for unit testing
+<span class="fc" id="L41">class ClientControllerTest {</span>
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JsonMapper objectMapper;
+
+    @MockitoBean
+    private ClientService clientService;
+
+    @MockitoBean
+    private JwtUtilService jwtUtilService;
+
+    @MockitoBean
+    private JwtFilter jwtFilter;
+
+
+    // --- Constants ---
+<span class="fc" id="L60">    private static final UUID CLIENT_ID = UUID.randomUUID();</span>
+    private static final String CLIENT_NAME = &quot;Test Tenant&quot;;
+    private static final String REDIRECT_URL = &quot;https://tenant.app/callback&quot;;
+    private static final String RAW_SECRET = &quot;raw-secret-key-123&quot;;
+
+    private ClientResponse clientResponse;
+    private RegisterClientResponse registerClientResponse;
+
+    @BeforeEach
+    void setUp() {
+<span class="fc" id="L70">        clientResponse = new ClientResponse(</span>
+                CLIENT_ID,
+                CLIENT_NAME,
+<span class="fc" id="L73">                true,</span>
+<span class="fc" id="L74">                OffsetDateTime.now()</span>
+        );
+
+<span class="fc" id="L77">        registerClientResponse = new RegisterClientResponse(</span>
+                CLIENT_NAME,
+                CLIENT_ID,
+                RAW_SECRET,
+                &quot;Warning: Copy this clientSecret immediately.&quot;
+        );
+<span class="fc" id="L83">    }</span>
+
+    // ==========================================
+    // Tests for POST /clients/register
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;POST /clients/register - Should return 201 Created on valid request&quot;)
+    void registerClient_WhenValid_ShouldReturnCreated() throws Exception {
+        // Arrange
+<span class="fc" id="L93">        RegisterClientRequest request = new RegisterClientRequest(CLIENT_NAME, REDIRECT_URL);</span>
+
+        // @AuthenticationPrincipal resolves to null when filters are disabled, so we use any()
+<span class="fc" id="L96">        when(clientService.registerClient(any(RegisterClientRequest.class), any())).thenReturn(registerClientResponse);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L99">        mockMvc.perform(post(&quot;/clients/register&quot;)</span>
+<span class="fc" id="L100">                        .with(csrf())</span>
+<span class="fc" id="L101">                        .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L102">                        .content(objectMapper.writeValueAsString(request)))</span>
+<span class="fc" id="L103">                .andExpect(status().isCreated())</span>
+<span class="fc" id="L104">                .andExpect(jsonPath(&quot;$.name&quot;).value(CLIENT_NAME))</span>
+<span class="fc" id="L105">                .andExpect(jsonPath(&quot;$.clientId&quot;).value(CLIENT_ID.toString()))</span>
+<span class="fc" id="L106">                .andExpect(jsonPath(&quot;$.clientSecret&quot;).value(RAW_SECRET));</span>
+
+<span class="fc" id="L108">        verify(clientService).registerClient(any(RegisterClientRequest.class), any());</span>
+<span class="fc" id="L109">    }</span>
+
+    @Test
+    @DisplayName(&quot;POST /clients/register - Should return 400 Bad Request if validation fails&quot;)
+    void registerClient_WhenInvalid_ShouldReturnBadRequest() throws Exception {
+        // Arrange: Missing name to trigger @Valid failure
+<span class="fc" id="L115">        RegisterClientRequest request = new RegisterClientRequest(&quot;&quot;, REDIRECT_URL);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L118">        mockMvc.perform(post(&quot;/clients/register&quot;)</span>
+<span class="fc" id="L119">                        .with(csrf())</span>
+<span class="fc" id="L120">                        .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L121">                        .content(objectMapper.writeValueAsString(request)))</span>
+<span class="fc" id="L122">                .andExpect(status().isBadRequest());</span>
+
+<span class="fc" id="L124">        verify(clientService, never()).registerClient(any(), any());</span>
+<span class="fc" id="L125">    }</span>
+
+    // ==========================================
+    // Tests for GET /clients/{clientId}
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;GET /clients/{clientId} - Should return 200 OK with ClientResponse&quot;)
+    void getClientById_WhenValid_ShouldReturnClient() throws Exception {
+        // Arrange
+<span class="fc" id="L135">        when(clientService.getActiveClientById(CLIENT_ID)).thenReturn(clientResponse);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L138">        mockMvc.perform(get(&quot;/clients/{clientId}&quot;, CLIENT_ID))</span>
+<span class="fc" id="L139">                .andExpect(status().isOk())</span>
+<span class="fc" id="L140">                .andExpect(jsonPath(&quot;$.id&quot;).value(CLIENT_ID.toString()))</span>
+<span class="fc" id="L141">                .andExpect(jsonPath(&quot;$.name&quot;).value(CLIENT_NAME))</span>
+<span class="fc" id="L142">                .andExpect(jsonPath(&quot;$.isActive&quot;).value(true));</span>
+
+<span class="fc" id="L144">        verify(clientService).getActiveClientById(CLIENT_ID);</span>
+<span class="fc" id="L145">    }</span>
+
+    // ==========================================
+    // Tests for GET /clients
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;GET /clients - Should return 200 OK with paginated clients&quot;)
+    void getClients_WhenValid_ShouldReturnPage() throws Exception {
+        // Arrange
+<span class="fc" id="L155">        Page&lt;ClientResponse&gt; pagedResponse = new PageImpl&lt;&gt;(List.of(clientResponse));</span>
+<span class="fc" id="L156">        when(clientService.getAllClients(any(Pageable.class))).thenReturn(pagedResponse);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L159">        mockMvc.perform(get(&quot;/clients&quot;)</span>
+<span class="fc" id="L160">                        .param(&quot;page&quot;, &quot;0&quot;)</span>
+<span class="fc" id="L161">                        .param(&quot;size&quot;, &quot;10&quot;))</span>
+<span class="fc" id="L162">                .andExpect(status().isOk())</span>
+<span class="fc" id="L163">                .andExpect(jsonPath(&quot;$.content[0].id&quot;).value(CLIENT_ID.toString()))</span>
+<span class="fc" id="L164">                .andExpect(jsonPath(&quot;$.content[0].name&quot;).value(CLIENT_NAME))</span>
+<span class="fc" id="L165">                .andExpect(jsonPath(&quot;$.totalElements&quot;).value(1));</span>
+
+<span class="fc" id="L167">        verify(clientService).getAllClients(any(Pageable.class));</span>
+<span class="fc" id="L168">    }</span>
+
+    // ==========================================
+    // Tests for PUT /clients/update/redirect-url
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;PUT /clients/update/redirect-url - Should return 200 OK on success&quot;)
+    void updateRedirectUrl_WhenValid_ShouldReturnOk() throws Exception {
+        // Arrange
+<span class="fc" id="L178">        String newUrl = &quot;https://new-tenant.app/callback&quot;;</span>
+<span class="fc" id="L179">        UpdateRedirectUrlRequest request = new UpdateRedirectUrlRequest(newUrl);</span>
+
+<span class="fc" id="L181">        doNothing().when(clientService).updateRedirectUrl(any(), eq(newUrl));</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L184">        mockMvc.perform(put(&quot;/clients/update/redirect-url&quot;)</span>
+<span class="fc" id="L185">                        .with(csrf()) // Required for PUT</span>
+<span class="fc" id="L186">                        .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L187">                        .content(objectMapper.writeValueAsString(request)))</span>
+<span class="fc" id="L188">                .andExpect(status().isOk())</span>
+<span class="fc" id="L189">                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;Redirect URL updated successfully&quot;));</span>
+
+<span class="fc" id="L191">        verify(clientService).updateRedirectUrl(any(), eq(newUrl));</span>
+<span class="fc" id="L192">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

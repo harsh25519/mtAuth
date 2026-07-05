@@ -1,0 +1,360 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > AuthControllerTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.auth</a>
+</div>
+
+<h1>Coverage Summary for Class: AuthControllerTest (bdj.hkb.auth_service.auth)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">AuthControllerTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (12/12)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (75/75)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.auth;
+&nbsp;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.auth.dto.AuthResponse;
+&nbsp;import bdj.hkb.auth_service.auth.dto.LocalLoginRequest;
+&nbsp;import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
+&nbsp;import bdj.hkb.auth_service.security.JwtFilter;
+&nbsp;import bdj.hkb.auth_service.security.JwtUtilService;
+&nbsp;import bdj.hkb.auth_service.security.dto.RefreshTokenRequest;
+&nbsp;import bdj.hkb.auth_service.user.emailVerification.EmailVerificationService;
+&nbsp;import bdj.hkb.auth_service.user.emailVerification.dto.ResendVerificationRequest;
+&nbsp;import bdj.hkb.auth_service.user.passwordReset.PasswordResetService;
+&nbsp;import bdj.hkb.auth_service.user.passwordReset.dto.ForgotPasswordRequest;
+&nbsp;import bdj.hkb.auth_service.user.passwordReset.dto.ResetPasswordExecutionRequest;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.springframework.beans.factory.annotation.Autowired;
+&nbsp;import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+&nbsp;import org.springframework.http.MediaType;
+&nbsp;import org.springframework.test.context.bean.override.mockito.MockitoBean;
+&nbsp;import org.springframework.test.web.servlet.MockMvc;
+&nbsp;import tools.jackson.databind.json.JsonMapper;
+&nbsp;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.mockito.ArgumentMatchers.any;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+&nbsp;
+&nbsp;@WebMvcTest(controllers = AuthController.class,
+&nbsp;        excludeAutoConfiguration = {SecurityAutoConfiguration.class}
+&nbsp;)
+&nbsp;@AutoConfigureMockMvc(addFilters = false)
+<b class="fc">&nbsp;class AuthControllerTest {</b>
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private MockMvc mockMvc;
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private JsonMapper objectMapper;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private AuthService authService;
+&nbsp;    @MockitoBean
+&nbsp;    private EmailVerificationService emailVerificationService;
+&nbsp;    @MockitoBean
+&nbsp;    private LocalAuthOrchestrator localAuthOrchestrator;
+&nbsp;    @MockitoBean
+&nbsp;    private PasswordResetService passwordResetService;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtFilter jwtFilter;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtUtilService jwtUtilService;
+&nbsp;
+&nbsp;    // --- Constants ---
+<b class="fc">&nbsp;    private static final UUID CLIENT_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String VALID_EMAIL = &quot;test@example.com&quot;;
+&nbsp;    private static final String PASSWORD = &quot;SecurePassword123!&quot;;
+&nbsp;    private static final String CLIENT_SECRET = &quot;super-secret&quot;;
+&nbsp;    private static final String MOCK_TOKEN = &quot;mock.jwt.token&quot;;
+&nbsp;
+&nbsp;    private AuthResponse authResponse;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        authResponse = new AuthResponse(&quot;access&quot;, &quot;refresh&quot;, &quot;Bearer&quot;);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/signup
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/signup - Should return 200 OK with success message on valid request&quot;)
+&nbsp;    void signup_WhenValid_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        LocalSignupRequest request = new LocalSignupRequest(VALID_EMAIL, PASSWORD, CLIENT_ID, CLIENT_SECRET);</b>
+<b class="fc">&nbsp;        doNothing().when(localAuthOrchestrator).registerUserAndDispatchEmail(any(LocalSignupRequest.class));</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/signup&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;Registration successful. Please check your email to verify your account.&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(localAuthOrchestrator).registerUserAndDispatchEmail(any(LocalSignupRequest.class));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/signup - Should return 400 Bad Request if email is invalid&quot;)
+&nbsp;    void signup_WhenEmailInvalid_ShouldReturnBadRequest() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        LocalSignupRequest request = new LocalSignupRequest(&quot;not-an-email&quot;, PASSWORD, CLIENT_ID, CLIENT_SECRET);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/signup&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isBadRequest());</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(localAuthOrchestrator, never()).registerUserAndDispatchEmail(any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/login
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/login - Should return 200 OK with AuthResponse on valid credentials&quot;)
+&nbsp;    void login_WhenValid_ShouldReturnAuthResponse() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        LocalLoginRequest request = new LocalLoginRequest(VALID_EMAIL, PASSWORD, CLIENT_ID);</b>
+<b class="fc">&nbsp;        when(authService.authenticateLocalUser(any(LocalLoginRequest.class))).thenReturn(authResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/login&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.accessToken&quot;).value(&quot;access&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.refreshToken&quot;).value(&quot;refresh&quot;));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/logout
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/logout - Should extract token and return 204 No Content&quot;)
+&nbsp;    void logout_WhenValidHeader_ShouldReturnNoContent() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String authHeader = &quot;Bearer &quot; + MOCK_TOKEN;</b>
+<b class="fc">&nbsp;        doNothing().when(authService).logout(MOCK_TOKEN);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/logout&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .header(&quot;Authorization&quot;, authHeader))</b>
+<b class="fc">&nbsp;                .andExpect(status().isNoContent());</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(authService).logout(MOCK_TOKEN);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/refresh
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/refresh - Should return 200 OK with new AuthResponse&quot;)
+&nbsp;    void refresh_WhenValidToken_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RefreshTokenRequest request = new RefreshTokenRequest(&quot;valid-refresh-token&quot;);</b>
+<b class="fc">&nbsp;        when(authService.refreshAccessToken(&quot;valid-refresh-token&quot;)).thenReturn(authResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/refresh&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.accessToken&quot;).value(&quot;access&quot;));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/verify-email
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /auth/verify-email - Should parse query param and return 200 OK&quot;)
+&nbsp;    void verifyEmail_WhenValidToken_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        doNothing().when(emailVerificationService).verifyEmail(MOCK_TOKEN);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/auth/verify-email&quot;)</b>
+<b class="fc">&nbsp;                        .param(&quot;token&quot;, MOCK_TOKEN))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;Email verified successfully. You can now log in.&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(emailVerificationService).verifyEmail(MOCK_TOKEN);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/resend-verification
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/resend-verification - Should return 200 OK on valid request&quot;)
+&nbsp;    void resendVerification_WhenValid_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        ResendVerificationRequest request = new ResendVerificationRequest(VALID_EMAIL, CLIENT_ID);</b>
+<b class="fc">&nbsp;        doNothing().when(localAuthOrchestrator).resendVerificationEmail(any(ResendVerificationRequest.class));</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/resend-verification&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;If an account exists and is unverified, a new link has been sent.&quot;));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/forgot-password
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/forgot-password - Should return 200 OK on valid request&quot;)
+&nbsp;    void forgotPassword_WhenValid_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        ForgotPasswordRequest request = new ForgotPasswordRequest(VALID_EMAIL, CLIENT_ID);</b>
+<b class="fc">&nbsp;        doNothing().when(localAuthOrchestrator).requestPasswordReset(any(ForgotPasswordRequest.class));</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/forgot-password&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;If an account with that email exists, a password reset link has been sent.&quot;));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for /auth/reset-password
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /auth/reset-password - Should parse query param and body, then return 200 OK&quot;)
+&nbsp;    void resetPassword_WhenValidTokenAndBody_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        ResetPasswordExecutionRequest request = new ResetPasswordExecutionRequest(&quot;NewPassword123!&quot;);</b>
+<b class="fc">&nbsp;        doNothing().when(passwordResetService).executePasswordReset(MOCK_TOKEN, &quot;NewPassword123!&quot;);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/auth/reset-password&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .param(&quot;token&quot;, MOCK_TOKEN)</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;Password has been successfully reset. You can now log in.&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(passwordResetService).executePasswordReset(MOCK_TOKEN, &quot;NewPassword123!&quot;);</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

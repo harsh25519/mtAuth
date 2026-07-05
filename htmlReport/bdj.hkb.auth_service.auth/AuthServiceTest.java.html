@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthServiceTest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.auth</a> &gt; <span class="el_source">AuthServiceTest.java</span></div><h1>AuthServiceTest.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.auth;
+
+import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.auth.dto.LocalLoginRequest;
+import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
+import bdj.hkb.auth_service.client.Client;
+import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.exceptionHandler.*;
+import bdj.hkb.auth_service.role.UserRole;
+import bdj.hkb.auth_service.role.UserRoleRepository;
+import bdj.hkb.auth_service.security.JwtUtilService;
+import bdj.hkb.auth_service.security.RefreshTokenService;
+import bdj.hkb.auth_service.security.TokenBlacklistService;
+import bdj.hkb.auth_service.user.User;
+import bdj.hkb.auth_service.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+<span class="fc" id="L40">class AuthServiceTest {</span>
+
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private ClientRepository clientRepository;
+    @Mock
+    private UserRoleRepository userRoleRepository;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+    @Mock
+    private JwtUtilService jwtUtil;
+    @Mock
+    private TokenBlacklistService tokenBlacklistService;
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
+    @InjectMocks
+    private AuthService authService;
+
+    @Captor
+    private ArgumentCaptor&lt;User&gt; userCaptor;
+    @Captor
+    private ArgumentCaptor&lt;UserRole&gt; roleCaptor;
+
+    // --- Constants ---
+<span class="fc" id="L66">    private static final UUID CLIENT_ID = UUID.randomUUID();</span>
+<span class="fc" id="L67">    private static final UUID USER_ID = UUID.randomUUID();</span>
+    private static final String EMAIL = &quot;test@example.com&quot;;
+    private static final String RAW_PASSWORD = &quot;Password123!&quot;;
+    private static final String ENCODED_PASSWORD = &quot;encodedPassword&quot;;
+    private static final String RAW_SECRET = &quot;clientSecret&quot;;
+    private static final String ENCODED_SECRET = &quot;encodedSecret&quot;;
+
+    private static final String ACCESS_TOKEN = &quot;mock.access.token&quot;;
+    private static final String REFRESH_TOKEN = &quot;mock.refresh.token&quot;;
+<span class="fc" id="L76">    private static final String JTI = UUID.randomUUID().toString();</span>
+
+    private Client mockClient;
+    private User mockUser;
+
+    @BeforeEach
+    void setUp() {
+<span class="fc" id="L83">        mockClient = Client.builder()</span>
+<span class="fc" id="L84">                .id(CLIENT_ID)</span>
+<span class="fc" id="L85">                .clientSecret(ENCODED_SECRET)</span>
+<span class="fc" id="L86">                .isActive(true)</span>
+<span class="fc" id="L87">                .build();</span>
+
+<span class="fc" id="L89">        mockUser = User.builder()</span>
+<span class="fc" id="L90">                .id(USER_ID)</span>
+<span class="fc" id="L91">                .client(mockClient)</span>
+<span class="fc" id="L92">                .email(EMAIL)</span>
+<span class="fc" id="L93">                .passwordHash(ENCODED_PASSWORD)</span>
+<span class="fc" id="L94">                .authProvider(&quot;local&quot;)</span>
+<span class="fc" id="L95">                .isActive(true)</span>
+<span class="fc" id="L96">                .isEmailVerified(true)</span>
+<span class="fc" id="L97">                .build();</span>
+<span class="fc" id="L98">    }</span>
+
+    // ==========================================
+    // Tests for registerLocalUser()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;registerLocalUser - Should successfully register user and assign default role&quot;)
+    void registerLocalUser_WhenValid_ShouldSaveUserAndRole() {
+        // Arrange
+<span class="fc" id="L108">        LocalSignupRequest request = new LocalSignupRequest(EMAIL, RAW_PASSWORD, CLIENT_ID, RAW_SECRET);</span>
+
+<span class="fc" id="L110">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L111">        when(passwordEncoder.matches(RAW_SECRET, ENCODED_SECRET)).thenReturn(true);</span>
+<span class="fc" id="L112">        when(userRepository.existsByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(false);</span>
+<span class="fc" id="L113">        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);</span>
+<span class="fc" id="L114">        when(userRepository.save(any(User.class))).thenReturn(mockUser);</span>
+
+        // Act
+<span class="fc" id="L117">        User result = authService.registerLocalUser(request);</span>
+
+        // Assert
+<span class="fc" id="L120">        assertThat(result).isEqualTo(mockUser);</span>
+
+<span class="fc" id="L122">        verify(userRepository).save(userCaptor.capture());</span>
+<span class="fc" id="L123">        User savedUser = userCaptor.getValue();</span>
+<span class="fc" id="L124">        assertThat(savedUser.getEmail()).isEqualTo(EMAIL);</span>
+<span class="fc" id="L125">        assertThat(savedUser.getPasswordHash()).isEqualTo(ENCODED_PASSWORD);</span>
+<span class="fc" id="L126">        assertThat(savedUser.getIsActive()).isFalse(); // Defaults for new registration</span>
+
+<span class="fc" id="L128">        verify(userRoleRepository).save(roleCaptor.capture());</span>
+<span class="fc" id="L129">        UserRole savedRole = roleCaptor.getValue();</span>
+<span class="fc" id="L130">        assertThat(savedRole.getRole()).isEqualTo(&quot;ROLE_USER&quot;);</span>
+<span class="fc" id="L131">    }</span>
+
+    @Test
+    @DisplayName(&quot;registerLocalUser - Should throw InvalidClientSecretException when secrets mismatch&quot;)
+    void registerLocalUser_WhenSecretMismatch_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L137">        LocalSignupRequest request = new LocalSignupRequest(EMAIL, RAW_PASSWORD, CLIENT_ID, &quot;wrong-secret&quot;);</span>
+
+<span class="fc" id="L139">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L140">        when(passwordEncoder.matches(&quot;wrong-secret&quot;, ENCODED_SECRET)).thenReturn(false);</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L143">        assertThrows(InvalidClientSecretException.class, () -&gt; authService.registerLocalUser(request));</span>
+<span class="fc" id="L144">        verify(userRepository, never()).save(any());</span>
+<span class="fc" id="L145">    }</span>
+
+    @Test
+    @DisplayName(&quot;registerLocalUser - Should handle DataIntegrityViolationException and map to UserAlreadyExistsException&quot;)
+    void registerLocalUser_WhenDatabaseThrowsConstraintViolation_ShouldMapException() {
+        // Arrange
+<span class="fc" id="L151">        LocalSignupRequest request = new LocalSignupRequest(EMAIL, RAW_PASSWORD, CLIENT_ID, RAW_SECRET);</span>
+
+<span class="fc" id="L153">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L154">        when(passwordEncoder.matches(RAW_SECRET, ENCODED_SECRET)).thenReturn(true);</span>
+<span class="fc" id="L155">        when(userRepository.existsByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(false);</span>
+<span class="fc" id="L156">        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);</span>
+
+<span class="fc" id="L158">        when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException(&quot;Duplicate&quot;));</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L161">        assertThrows(UserAlreadyExistsException.class, () -&gt; authService.registerLocalUser(request));</span>
+<span class="fc" id="L162">        verify(userRoleRepository, never()).save(any());</span>
+<span class="fc" id="L163">    }</span>
+
+    // ==========================================
+    // Tests for authenticateLocalUser()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;authenticateLocalUser - Should authenticate and return tokens when credentials are valid&quot;)
+    void authenticateLocalUser_WhenValid_ShouldIssueTokens() {
+        // Arrange
+<span class="fc" id="L173">        LocalLoginRequest request = new LocalLoginRequest(EMAIL, RAW_PASSWORD, CLIENT_ID);</span>
+<span class="fc" id="L174">        UserRole userRole = UserRole.builder().role(&quot;ROLE_USER&quot;).build();</span>
+
+<span class="fc" id="L176">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L177">        when(userRepository.findByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(Optional.of(mockUser));</span>
+<span class="fc" id="L178">        when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);</span>
+<span class="fc" id="L179">        when(userRoleRepository.findByUserIdAndClientId(USER_ID, CLIENT_ID)).thenReturn(List.of(userRole));</span>
+
+<span class="fc" id="L181">        when(jwtUtil.generateAccessToken(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), anyList())).thenReturn(ACCESS_TOKEN);</span>
+<span class="fc" id="L182">        when(jwtUtil.generateRefreshToken(USER_ID.toString(), CLIENT_ID.toString())).thenReturn(REFRESH_TOKEN);</span>
+<span class="fc" id="L183">        when(jwtUtil.extractJti(REFRESH_TOKEN)).thenReturn(JTI);</span>
+<span class="fc" id="L184">        when(jwtUtil.extractExpiration(REFRESH_TOKEN)).thenReturn(new Date(System.currentTimeMillis() + 100000));</span>
+
+        // Act
+<span class="fc" id="L187">        AuthResponse response = authService.authenticateLocalUser(request);</span>
+
+        // Assert
+<span class="fc" id="L190">        assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);</span>
+<span class="fc" id="L191">        assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);</span>
+<span class="fc" id="L192">        verify(refreshTokenService).store(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), eq(JTI), anyLong());</span>
+<span class="fc" id="L193">    }</span>
+
+    @Test
+    @DisplayName(&quot;authenticateLocalUser - Should throw exception if auth provider is not 'local'&quot;)
+    void authenticateLocalUser_WhenProviderIsOAuth_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L199">        mockUser.setAuthProvider(&quot;GOOGLE&quot;);</span>
+<span class="fc" id="L200">        LocalLoginRequest request = new LocalLoginRequest(EMAIL, RAW_PASSWORD, CLIENT_ID);</span>
+
+<span class="fc" id="L202">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L203">        when(userRepository.findByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(Optional.of(mockUser));</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L206">        InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class, () -&gt; authService.authenticateLocalUser(request));</span>
+<span class="fc" id="L207">        assertThat(exception.getMessage()).contains(&quot;Wrong auth provider&quot;);</span>
+<span class="fc" id="L208">    }</span>
+
+    @Test
+    @DisplayName(&quot;authenticateLocalUser - Should throw exception if email is not verified&quot;)
+    void authenticateLocalUser_WhenEmailNotVerified_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L214">        mockUser.setIsEmailVerified(false);</span>
+<span class="fc" id="L215">        LocalLoginRequest request = new LocalLoginRequest(EMAIL, RAW_PASSWORD, CLIENT_ID);</span>
+
+<span class="fc" id="L217">        when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));</span>
+<span class="fc" id="L218">        when(userRepository.findByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(Optional.of(mockUser));</span>
+<span class="fc" id="L219">        when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L222">        assertThrows(EmailNotVerifiedException.class, () -&gt; authService.authenticateLocalUser(request));</span>
+<span class="fc" id="L223">    }</span>
+
+    // ==========================================
+    // Tests for logout()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;logout - Should extract claims, blacklist access token, and revoke refresh token&quot;)
+    void logout_ShouldBlacklistAndRevoke() {
+        // Arrange
+<span class="fc" id="L233">        long expirationTime = System.currentTimeMillis() + 50000;</span>
+<span class="fc" id="L234">        when(jwtUtil.extractJti(ACCESS_TOKEN)).thenReturn(JTI);</span>
+<span class="fc" id="L235">        when(jwtUtil.extractUserId(ACCESS_TOKEN)).thenReturn(USER_ID.toString());</span>
+<span class="fc" id="L236">        when(jwtUtil.extractClientId(ACCESS_TOKEN)).thenReturn(CLIENT_ID.toString());</span>
+<span class="fc" id="L237">        when(jwtUtil.extractExpiration(ACCESS_TOKEN)).thenReturn(new Date(expirationTime));</span>
+
+        // Act
+<span class="fc" id="L240">        authService.logout(ACCESS_TOKEN);</span>
+
+        // Assert
+<span class="fc" id="L243">        verify(tokenBlacklistService).blacklist(eq(JTI), anyLong());</span>
+<span class="fc" id="L244">        verify(refreshTokenService).revoke(USER_ID.toString(), CLIENT_ID.toString());</span>
+<span class="fc" id="L245">    }</span>
+
+    // ==========================================
+    // Tests for refreshAccessToken()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;refreshAccessToken - Should issue new tokens if refresh token is valid&quot;)
+    void refreshAccessToken_WhenValid_ShouldIssueNewTokens() {
+        // Arrange
+<span class="fc" id="L255">        UserRole userRole = UserRole.builder().role(&quot;ROLE_USER&quot;).build();</span>
+
+<span class="fc" id="L257">        when(jwtUtil.validateToken(REFRESH_TOKEN)).thenReturn(true);</span>
+<span class="fc" id="L258">        when(jwtUtil.extractTokenType(REFRESH_TOKEN)).thenReturn(&quot;refresh&quot;);</span>
+<span class="fc" id="L259">        when(jwtUtil.extractUserId(REFRESH_TOKEN)).thenReturn(USER_ID.toString());</span>
+<span class="fc" id="L260">        when(jwtUtil.extractJti(REFRESH_TOKEN)).thenReturn(JTI);</span>
+<span class="fc" id="L261">        when(jwtUtil.extractClientId(REFRESH_TOKEN)).thenReturn(CLIENT_ID.toString());</span>
+
+<span class="fc" id="L263">        when(refreshTokenService.isValid(USER_ID.toString(), CLIENT_ID.toString(), JTI)).thenReturn(true);</span>
+<span class="fc" id="L264">        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser));</span>
+<span class="fc" id="L265">        when(userRoleRepository.findByUserIdAndClientId(USER_ID, CLIENT_ID)).thenReturn(List.of(userRole));</span>
+
+<span class="fc" id="L267">        when(jwtUtil.generateAccessToken(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), anyList())).thenReturn(&quot;new-access-token&quot;);</span>
+<span class="fc" id="L268">        when(jwtUtil.generateRefreshToken(USER_ID.toString(), CLIENT_ID.toString())).thenReturn(&quot;new-refresh-token&quot;);</span>
+<span class="fc" id="L269">        when(jwtUtil.extractJti(&quot;new-refresh-token&quot;)).thenReturn(&quot;new-jti&quot;);</span>
+<span class="fc" id="L270">        when(jwtUtil.extractExpiration(&quot;new-refresh-token&quot;)).thenReturn(new Date(System.currentTimeMillis() + 100000));</span>
+
+        // Act
+<span class="fc" id="L273">        AuthResponse response = authService.refreshAccessToken(REFRESH_TOKEN);</span>
+
+        // Assert
+<span class="fc" id="L276">        assertThat(response.accessToken()).isEqualTo(&quot;new-access-token&quot;);</span>
+<span class="fc" id="L277">        verify(refreshTokenService).store(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), eq(&quot;new-jti&quot;), anyLong());</span>
+<span class="fc" id="L278">    }</span>
+
+    @Test
+    @DisplayName(&quot;refreshAccessToken - Should throw InvalidTokenException if token type is not 'refresh'&quot;)
+    void refreshAccessToken_WhenWrongTokenType_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L284">        when(jwtUtil.validateToken(ACCESS_TOKEN)).thenReturn(true);</span>
+<span class="fc" id="L285">        when(jwtUtil.extractTokenType(ACCESS_TOKEN)).thenReturn(&quot;access&quot;);</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L288">        InvalidTokenException exception = assertThrows(InvalidTokenException.class, () -&gt; authService.refreshAccessToken(ACCESS_TOKEN));</span>
+<span class="fc" id="L289">        assertThat(exception.getMessage()).contains(&quot;Token is not a refresh token&quot;);</span>
+
+<span class="fc" id="L291">        verify(refreshTokenService, never()).isValid(anyString(), anyString(), anyString());</span>
+<span class="fc" id="L292">    }</span>
+
+    @Test
+    @DisplayName(&quot;refreshAccessToken - Should throw InvalidTokenException if token is revoked in Redis&quot;)
+    void refreshAccessToken_WhenRevokedInRedis_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L298">        when(jwtUtil.validateToken(REFRESH_TOKEN)).thenReturn(true);</span>
+<span class="fc" id="L299">        when(jwtUtil.extractTokenType(REFRESH_TOKEN)).thenReturn(&quot;refresh&quot;);</span>
+<span class="fc" id="L300">        when(jwtUtil.extractUserId(REFRESH_TOKEN)).thenReturn(USER_ID.toString());</span>
+<span class="fc" id="L301">        when(jwtUtil.extractJti(REFRESH_TOKEN)).thenReturn(JTI);</span>
+<span class="fc" id="L302">        when(jwtUtil.extractClientId(REFRESH_TOKEN)).thenReturn(CLIENT_ID.toString());</span>
+
+<span class="fc" id="L304">        when(refreshTokenService.isValid(USER_ID.toString(), CLIENT_ID.toString(), JTI)).thenReturn(false);</span>
+
+        // Act &amp; Assert
+<span class="pc" id="L307">        InvalidTokenException exception = assertThrows(InvalidTokenException.class, () -&gt; authService.refreshAccessToken(REFRESH_TOKEN));</span>
+<span class="fc" id="L308">        assertThat(exception.getMessage()).contains(&quot;revoked or replaced&quot;);</span>
+
+<span class="fc" id="L310">        verify(userRepository, never()).findById(any());</span>
+<span class="fc" id="L311">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

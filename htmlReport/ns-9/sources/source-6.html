@@ -1,0 +1,250 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > GlobalExceptionHandler</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.exceptionHandler</a>
+</div>
+
+<h1>Coverage Summary for Class: GlobalExceptionHandler (bdj.hkb.auth_service.exceptionHandler)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">GlobalExceptionHandler</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    8.3%
+  </span>
+  <span class="absValue">
+    (2/24)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    4.2%
+  </span>
+  <span class="absValue">
+    (2/48)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.exceptionHandler;
+&nbsp;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.http.HttpStatus;
+&nbsp;import org.springframework.http.ResponseEntity;
+&nbsp;import org.springframework.web.bind.MethodArgumentNotValidException;
+&nbsp;import org.springframework.web.bind.annotation.ExceptionHandler;
+&nbsp;import org.springframework.web.bind.annotation.RestControllerAdvice;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.stream.Collectors;
+&nbsp;
+&nbsp;@RestControllerAdvice
+<b class="fc">&nbsp;@Slf4j</b>
+<b class="fc">&nbsp;public class GlobalExceptionHandler {</b>
+&nbsp;
+&nbsp;    @ExceptionHandler(ClientNotFoundException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleClientNotFound(ClientNotFoundException ex) {
+<b class="nc">&nbsp;        log.info(&quot;Client lookup failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidClientSecretException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidSecret(InvalidClientSecretException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Client authentication failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(UserAlreadyExistsException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleUserExists(UserAlreadyExistsException ex) {
+<b class="nc">&nbsp;        log.info(&quot;Registration conflict: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidCredentialsException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidCredentials(InvalidCredentialsException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;User authentication failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(AccountDisabledException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleAccountDisabled(AccountDisabledException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Login attempt on disabled account: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidTokenException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidToken(InvalidTokenException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;JWT validation failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(EmailNotVerifiedException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleNotVerifiedEmail(EmailNotVerifiedException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Authentication blocked (Email not verified): {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidOAuthStateException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidOAuthState(InvalidOAuthStateException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;OAuth state validation failed (Potential CSRF): {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(MethodArgumentNotValidException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleValidation(MethodArgumentNotValidException ex) {
+<b class="nc">&nbsp;        String message = ex.getBindingResult().getFieldErrors().stream()</b>
+<b class="nc">&nbsp;                .map(f -&gt;</b>
+<b class="nc">&nbsp;                        f.getField() + &quot;: &quot; + f.getDefaultMessage())</b>
+<b class="nc">&nbsp;                .collect(Collectors.joining(&quot;, &quot;));</b>
+<b class="nc">&nbsp;        log.warn(&quot;Payload validation failed: {}&quot;, message);</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.BAD_REQUEST, message);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(UserNotFoundException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleUserNotFound(UserNotFoundException ex) {
+<b class="nc">&nbsp;        log.info(&quot;User lookup failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(SelfLockoutException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleSelfLockout(SelfLockoutException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;User attempted self-lockout: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(RoleNotFoundException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleRoleNotFound(RoleNotFoundException ex) {
+<b class="nc">&nbsp;        log.info(&quot;Role lookup failed: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(AccessDeniedException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleAccessDenied(AccessDeniedException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Access denied (Insufficient permissions): {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(OAuthCodeDeserializationException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthDeserialization(OAuthCodeDeserializationException ex) {
+<b class="nc">&nbsp;        log.error(&quot;Internal serialization error (Deserializing OAuth code)&quot;, ex);</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(OAuthCodeSerializationException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthSerialization(OAuthCodeSerializationException ex) {
+<b class="nc">&nbsp;        log.error(&quot;Internal serialization error (Serializing OAuth code)&quot;, ex);</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidOAuthProviderException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidOAuthProvider(InvalidOAuthProviderException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Invalid OAuth provider requested: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(OAuthProviderException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthProvider(OAuthProviderException ex) {
+<b class="nc">&nbsp;        log.error(&quot;External OAuth Provider communication failed&quot;, ex);</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Password reset token invalid or expired: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidEmailVerificationToken(InvalidEmailVerificationTokenException ex) {
+<b class="nc">&nbsp;        log.warn(&quot;Email verification token invalid or expired: {}&quot;, ex.getMessage());</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @ExceptionHandler(Exception.class)
+&nbsp;    public ResponseEntity&lt;ErrorResponse&gt; handleGeneric(Exception ex) {
+<b class="nc">&nbsp;        log.error(&quot;Unhandled exception occurred&quot;, ex);</b>
+<b class="nc">&nbsp;        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, &quot;Something went wrong&quot;);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;
+&nbsp;    private ResponseEntity&lt;ErrorResponse&gt; buildResponse(HttpStatus status, String message) {
+<b class="nc">&nbsp;        ErrorResponse error = new ErrorResponse(status.value(), message, OffsetDateTime.now());</b>
+<b class="nc">&nbsp;        return ResponseEntity.status(status).body(error);</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

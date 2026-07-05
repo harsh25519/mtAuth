@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GoogleOAuthStrategy.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.auth.strategy</a> &gt; <span class="el_source">GoogleOAuthStrategy.java</span></div><h1>GoogleOAuthStrategy.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.auth.strategy;
+
+import bdj.hkb.auth_service.auth.OAuthProvider;
+import bdj.hkb.auth_service.auth.dto.OAuth2UserInfo;
+import bdj.hkb.auth_service.exceptionHandler.OAuthProviderException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+@Component
+<span class="fc" id="L18">@Slf4j</span>
+public class GoogleOAuthStrategy implements OAuthProviderStrategy {
+
+    private final RestTemplate restTemplate;
+    @Value(&quot;${google.client-id}&quot;)
+    private String clientId;
+
+    @Value(&quot;${google.client-secret}&quot;)
+    private String clientSecret;
+
+    @Value(&quot;${google.redirect-uri}&quot;)
+    private String redirectUri;
+
+<span class="fc" id="L31">    public GoogleOAuthStrategy(RestTemplate restTemplate) {</span>
+<span class="fc" id="L32">        this.restTemplate = restTemplate;</span>
+<span class="fc" id="L33">    }</span>
+
+    @Override
+    public OAuthProvider getProvider() {
+<span class="fc" id="L37">        return OAuthProvider.GOOGLE;</span>
+    }
+
+    @Override
+    public String buildAuthorizationUrl(String state) {
+<span class="nc" id="L42">        log.debug(</span>
+                &quot;Building {} authorization URL&quot;,
+<span class="nc" id="L44">                getProvider()</span>
+        );
+<span class="nc" id="L46">        return &quot;https://accounts.google.com/o/oauth2/v2/auth&quot; +</span>
+                &quot;?client_id=&quot; + clientId +
+                &quot;&amp;redirect_uri=&quot; + redirectUri +
+                &quot;&amp;response_type=code&quot; +
+                &quot;&amp;scope=email%20profile&quot; +
+                &quot;&amp;access_type=offline&quot; +
+                &quot;&amp;state=&quot; + state +
+                &quot;&amp;prompt=consent&quot;;
+    }
+
+    @Override
+    public OAuth2UserInfo fetchUserInfo(String code) {
+
+        try {
+<span class="nc" id="L60">            log.info(</span>
+                    &quot;Exchanging authorization code with {}&quot;,
+<span class="nc" id="L62">                    getProvider()</span>
+            );
+
+            // 1. Exchange code for Google Access Token
+<span class="nc" id="L66">            String tokenUrl = &quot;https://oauth2.googleapis.com/token&quot;;</span>
+
+<span class="nc" id="L68">            MultiValueMap&lt;String, String&gt; body = new LinkedMultiValueMap&lt;&gt;();</span>
+<span class="nc" id="L69">            body.add(&quot;client_id&quot;, clientId);</span>
+<span class="nc" id="L70">            body.add(&quot;client_secret&quot;, clientSecret);</span>
+<span class="nc" id="L71">            body.add(&quot;code&quot;, code);</span>
+<span class="nc" id="L72">            body.add(&quot;redirect_uri&quot;, redirectUri);</span>
+<span class="nc" id="L73">            body.add(&quot;grant_type&quot;, &quot;authorization_code&quot;);</span>
+
+<span class="nc" id="L75">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L76">            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);</span>
+
+<span class="nc" id="L78">            ResponseEntity&lt;Map&gt; tokenResponse = restTemplate.postForEntity(tokenUrl, new HttpEntity&lt;&gt;(body, headers), Map.class);</span>
+<span class="nc" id="L79">            String accessToken = (String) tokenResponse.getBody().get(&quot;access_token&quot;);</span>
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">            if (accessToken == null) {</span>
+<span class="nc" id="L82">                log.error(</span>
+                        &quot;Failed to retrieve {} access token&quot;,
+<span class="nc" id="L84">                        getProvider()</span>
+                );
+<span class="nc" id="L86">                throw new RuntimeException(&quot;Failed to retrieve Google token&quot;);</span>
+            }
+
+<span class="nc" id="L89">            log.info(</span>
+                    &quot;{} access token successfully obtained&quot;,
+<span class="nc" id="L91">                    getProvider()</span>
+            );
+
+            // 2. Fetch User Profile (Google provides ID and Email in one shot)
+<span class="nc" id="L95">            String userInfoUrl = &quot;https://www.googleapis.com/oauth2/v3/userinfo&quot;;</span>
+<span class="nc" id="L96">            HttpHeaders authHeaders = new HttpHeaders();</span>
+<span class="nc" id="L97">            authHeaders.setBearerAuth(accessToken);</span>
+
+<span class="nc" id="L99">            ResponseEntity&lt;Map&gt; userResponse = restTemplate.exchange(userInfoUrl, HttpMethod.GET, new HttpEntity&lt;&gt;(authHeaders), Map.class);</span>
+
+<span class="nc" id="L101">            String email = (String) userResponse.getBody().get(&quot;email&quot;);</span>
+<span class="nc" id="L102">            String providerId = (String) userResponse.getBody().get(&quot;sub&quot;); // Google calls their ID &quot;sub&quot; (Subject)</span>
+
+<span class="nc bnc" id="L104" title="All 4 branches missed.">            if (email == null || providerId == null) {</span>
+<span class="nc" id="L105">                log.error(</span>
+                        &quot;No primary email returned by Google&quot;
+                );
+<span class="nc" id="L108">                throw new RuntimeException(&quot;Failed to retrieve email or provider ID from Google&quot;);</span>
+            }
+
+<span class="nc" id="L111">            log.debug(</span>
+                    &quot;{} provider returned user {}&quot;,
+<span class="nc" id="L113">                    getProvider(),</span>
+                    providerId
+            );
+
+<span class="nc" id="L117">            log.info(</span>
+                    &quot;Successfully retrieved {} user information&quot;,
+<span class="nc" id="L119">                    getProvider()</span>
+            );
+
+<span class="nc" id="L122">            return new OAuth2UserInfo(email, providerId);</span>
+<span class="nc" id="L123">        } catch (RestClientException e) {</span>
+<span class="nc" id="L124">            log.error(</span>
+                    &quot;OAuth communication with {} failed&quot;,
+<span class="nc" id="L126">                    getProvider(),</span>
+                    e
+            );
+<span class="nc" id="L129">            throw new OAuthProviderException(&quot;Communication failed with OAuth server.&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

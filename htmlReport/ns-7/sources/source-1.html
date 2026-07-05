@@ -1,0 +1,190 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > AdminSeeder</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.config</a>
+</div>
+
+<h1>Coverage Summary for Class: AdminSeeder (bdj.hkb.auth_service.config)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">AdminSeeder</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    66.7%
+  </span>
+  <span class="absValue">
+    (2/3)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    50%
+  </span>
+  <span class="absValue">
+    (1/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    69.2%
+  </span>
+  <span class="absValue">
+    (18/26)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.config;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.Client;
+&nbsp;import bdj.hkb.auth_service.client.ClientRepository;
+&nbsp;import bdj.hkb.auth_service.role.UserRole;
+&nbsp;import bdj.hkb.auth_service.role.UserRoleRepository;
+&nbsp;import bdj.hkb.auth_service.user.User;
+&nbsp;import bdj.hkb.auth_service.user.UserRepository;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.beans.factory.annotation.Value;
+&nbsp;import org.springframework.boot.ApplicationArguments;
+&nbsp;import org.springframework.boot.ApplicationRunner;
+&nbsp;import org.springframework.security.crypto.password.PasswordEncoder;
+&nbsp;import org.springframework.stereotype.Component;
+&nbsp;
+&nbsp;import java.util.UUID;
+&nbsp;
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;@Component
+&nbsp;@RequiredArgsConstructor
+&nbsp;public class AdminSeeder implements ApplicationRunner {
+&nbsp;
+&nbsp;    private final ClientRepository clientRepository;
+&nbsp;    private final UserRepository userRepository;
+&nbsp;    private final UserRoleRepository userRoleRepository;
+&nbsp;    private final PasswordEncoder passwordEncoder;
+&nbsp;
+&nbsp;    @Value(&quot;${platform.master-client-id}&quot;)
+&nbsp;    private String consoleClientId;
+&nbsp;
+&nbsp;    @Value(&quot;${platform.admin-email}&quot;)
+&nbsp;    private String adminEmail;
+&nbsp;
+&nbsp;    @Value(&quot;${platform.admin-password}&quot;)
+&nbsp;    private String adminPassword;
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public void run(ApplicationArguments args) {
+<b class="fc">&nbsp;        UUID clientUuid = UUID.fromString(consoleClientId);</b>
+&nbsp;
+&nbsp;        // seed console client if not exists
+<b class="fc">&nbsp;        Client client = clientRepository.findById(clientUuid)</b>
+<b class="fc">&nbsp;                .orElseGet(() -&gt; {</b>
+<b class="nc">&nbsp;                    log.info(&quot;Seeding Master Console Client...&quot;);</b>
+<b class="nc">&nbsp;                    return clientRepository.saveAndFlush(Client.builder()</b>
+<b class="nc">&nbsp;                            .id(clientUuid)</b>
+<b class="nc">&nbsp;                            .name(&quot;auth-console&quot;)</b>
+<b class="nc">&nbsp;                            .clientSecret(passwordEncoder.encode(&quot;secret123&quot;))</b>
+<b class="nc">&nbsp;                            .isActive(true)</b>
+<b class="nc">&nbsp;                            .build());</b>
+&nbsp;                });
+&nbsp;
+&nbsp;        // seed admin user if not exists
+<b class="pc">&nbsp;        if (!userRepository.existsByClientIdAndEmail(clientUuid, adminEmail)) {</b>
+<b class="fc">&nbsp;            log.info(&quot;Seeding Initial Platform Admin: {}&quot;, adminEmail);</b>
+<b class="fc">&nbsp;            User admin = userRepository.save(User.builder()</b>
+<b class="fc">&nbsp;                    .client(client)</b>
+<b class="fc">&nbsp;                    .email(adminEmail)</b>
+<b class="fc">&nbsp;                    .passwordHash(passwordEncoder.encode(adminPassword))</b>
+<b class="fc">&nbsp;                    .authProvider(&quot;local&quot;)</b>
+<b class="fc">&nbsp;                    .isActive(true)</b>
+<b class="fc">&nbsp;                    .build());</b>
+&nbsp;
+<b class="fc">&nbsp;            userRoleRepository.save(UserRole.builder()</b>
+<b class="fc">&nbsp;                    .user(admin)</b>
+<b class="fc">&nbsp;                    .client(client)</b>
+<b class="fc">&nbsp;                    .role(&quot;ROLE_AUTH_ADMIN&quot;)</b>
+<b class="fc">&nbsp;                    .build());</b>
+&nbsp;        }else{
+<b class="nc">&nbsp;            log.info(&quot;Platform Admin already exists. Skipping seeding.&quot;);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

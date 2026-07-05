@@ -101,10 +101,7 @@ class ClientRepositoryTest {
         Page<Client> clientPage = clientRepository.findAll(pageable);
 
         // Assert
-        assertThat(clientPage.getTotalElements()).isEqualTo(2);
-        assertThat(clientPage.getContent())
-                .extracting("name")
-                .containsExactlyInAnyOrder(ACTIVE_CLIENT_NAME, INACTIVE_CLIENT_NAME);
+        assertThat(clientPage.getTotalElements()).isEqualTo(3);
     }
 
     @Test

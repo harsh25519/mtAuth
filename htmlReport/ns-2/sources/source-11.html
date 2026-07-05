@@ -1,0 +1,267 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > OAuthStateServiceTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.auth</a>
+</div>
+
+<h1>Coverage Summary for Class: OAuthStateServiceTest (bdj.hkb.auth_service.auth)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">OAuthStateServiceTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (11/11)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (44/44)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.auth;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthStateException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.OAuthCodeDeserializationException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.OAuthCodeSerializationException;
+&nbsp;import com.fasterxml.jackson.core.JsonProcessingException;
+&nbsp;import com.fasterxml.jackson.databind.ObjectMapper;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.junit.jupiter.api.extension.ExtendWith;
+&nbsp;import org.mockito.ArgumentCaptor;
+&nbsp;import org.mockito.Captor;
+&nbsp;import org.mockito.InjectMocks;
+&nbsp;import org.mockito.Mock;
+&nbsp;import org.mockito.junit.jupiter.MockitoExtension;
+&nbsp;import org.springframework.data.redis.core.StringRedisTemplate;
+&nbsp;import org.springframework.data.redis.core.ValueOperations;
+&nbsp;
+&nbsp;import java.time.Duration;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.assertj.core.api.Assertions.assertThat;
+&nbsp;import static org.junit.jupiter.api.Assertions.assertThrows;
+&nbsp;import static org.mockito.ArgumentMatchers.*;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;
+&nbsp;@ExtendWith(MockitoExtension.class)
+<b class="fc">&nbsp;class OAuthStateServiceTest {</b>
+&nbsp;
+&nbsp;    @Mock private StringRedisTemplate redisTemplate;
+&nbsp;    @Mock private ValueOperations&lt;String, String&gt; valueOperations;
+&nbsp;    @Mock private ObjectMapper objectMapper;
+&nbsp;
+&nbsp;    @InjectMocks
+&nbsp;    private OAuthStateService stateService;
+&nbsp;
+&nbsp;    @Captor
+&nbsp;    private ArgumentCaptor&lt;OAuthStateContext&gt; contextCaptor;
+&nbsp;
+&nbsp;    // --- Constants ---
+&nbsp;    private static final String STATE_KEY_PREFIX = &quot;oauth:state:&quot;;
+<b class="fc">&nbsp;    private static final UUID CLIENT_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String MOCK_JSON_CONTEXT = &quot;{\&quot;clientId\&quot;:\&quot;mock-id\&quot;,\&quot;provider\&quot;:\&quot;GOOGLE\&quot;,\&quot;timestamp\&quot;:123456789}&quot;;
+&nbsp;    private static final String MOCK_STATE = &quot;secure-random-state-xyz&quot;;
+&nbsp;
+&nbsp;    private OAuthProvider targetProvider;
+&nbsp;    private OAuthStateContext expectedContext;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);</b>
+&nbsp;
+<b class="fc">&nbsp;        targetProvider = OAuthProvider.GOOGLE;</b>
+<b class="fc">&nbsp;        expectedContext = new OAuthStateContext(CLIENT_ID, targetProvider, System.currentTimeMillis());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for generateAndSaveState()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;generateAndSaveState - Should create context, serialize, save to Redis, and return state string&quot;)
+&nbsp;    void generateAndSaveState_WhenValid_ShouldSaveAndReturnState() throws JsonProcessingException {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(objectMapper.writeValueAsString(any(OAuthStateContext.class))).thenReturn(MOCK_JSON_CONTEXT);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        String state = stateService.generateAndSaveState(CLIENT_ID, targetProvider);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(state).isNotBlank();</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(objectMapper).writeValueAsString(contextCaptor.capture());</b>
+<b class="fc">&nbsp;        OAuthStateContext capturedContext = contextCaptor.getValue();</b>
+<b class="fc">&nbsp;        assertThat(capturedContext.clientId()).isEqualTo(CLIENT_ID);</b>
+<b class="fc">&nbsp;        assertThat(capturedContext.provider()).isEqualTo(targetProvider);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(valueOperations).set(</b>
+<b class="fc">&nbsp;                eq(STATE_KEY_PREFIX + state),</b>
+<b class="fc">&nbsp;                eq(MOCK_JSON_CONTEXT),</b>
+<b class="fc">&nbsp;                eq(Duration.ofMinutes(10))</b>
+&nbsp;        );
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;generateAndSaveState - Should throw OAuth2AuthenticationException if Jackson serialization fails&quot;)
+&nbsp;    void generateAndSaveState_WhenSerializationFails_ShouldThrowException() throws JsonProcessingException {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        JsonProcessingException mockException = mock(JsonProcessingException.class);</b>
+<b class="fc">&nbsp;        when(objectMapper.writeValueAsString(any(OAuthStateContext.class))).thenThrow(mockException);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        OAuthCodeSerializationException exception = assertThrows(OAuthCodeSerializationException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            stateService.generateAndSaveState(CLIENT_ID, targetProvider);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;Failed to serialize OAuth state context&quot;);</b>
+<b class="fc">&nbsp;        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for validateAndConsumeState()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;validateAndConsumeState - Should fetch from Redis, burn the key, deserialize, and return&quot;)
+&nbsp;    void validateAndConsumeState_WhenValid_ShouldConsumeAndBurnKey() throws JsonProcessingException {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String expectedKey = STATE_KEY_PREFIX + MOCK_STATE;</b>
+<b class="fc">&nbsp;        when(valueOperations.get(expectedKey)).thenReturn(MOCK_JSON_CONTEXT);</b>
+<b class="fc">&nbsp;        when(objectMapper.readValue(MOCK_JSON_CONTEXT, OAuthStateContext.class)).thenReturn(expectedContext);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        OAuthStateContext result = stateService.validateAndConsumeState(MOCK_STATE);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result).isEqualTo(expectedContext);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(redisTemplate).delete(expectedKey);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;validateAndConsumeState - Should throw InvalidOAuthStateException if state is not found in Redis&quot;)
+&nbsp;    void validateAndConsumeState_WhenNotFound_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String expectedKey = STATE_KEY_PREFIX + MOCK_STATE;</b>
+<b class="fc">&nbsp;        when(valueOperations.get(expectedKey)).thenReturn(null); // Simulated expiration or invalid state</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        InvalidOAuthStateException exception = assertThrows(InvalidOAuthStateException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            stateService.validateAndConsumeState(MOCK_STATE);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;Invalid or expired OAuth state&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(redisTemplate, never()).delete(anyString());</b>
+<b class="fc">&nbsp;        verifyNoInteractions(objectMapper);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;validateAndConsumeState - Should delete key and throw OAuthCodeDeserializationException if Jackson fails&quot;)
+&nbsp;    void validateAndConsumeState_WhenDeserializationFails_ShouldBurnKeyAndThrowException() throws JsonProcessingException {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String expectedKey = STATE_KEY_PREFIX + MOCK_STATE;</b>
+<b class="fc">&nbsp;        String corruptedJson = &quot;{bad-state-json}&quot;;</b>
+&nbsp;
+<b class="fc">&nbsp;        when(valueOperations.get(expectedKey)).thenReturn(corruptedJson);</b>
+&nbsp;
+<b class="fc">&nbsp;        JsonProcessingException mockException = mock(JsonProcessingException.class);</b>
+<b class="fc">&nbsp;        when(objectMapper.readValue(corruptedJson, OAuthStateContext.class)).thenThrow(mockException);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        OAuthCodeDeserializationException exception = assertThrows(OAuthCodeDeserializationException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            stateService.validateAndConsumeState(MOCK_STATE);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;Failed to deserialize state context&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(redisTemplate).delete(expectedKey);</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

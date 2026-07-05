@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.exceptionHandler</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.exceptionHandler;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.OffsetDateTime;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+<span class="fc" id="L14">@Slf4j</span>
+<span class="fc" id="L15">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(ClientNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleClientNotFound(ClientNotFoundException ex) {
+<span class="nc" id="L19">        log.info(&quot;Client lookup failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L20">        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidClientSecretException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidSecret(InvalidClientSecretException ex) {
+<span class="nc" id="L25">        log.warn(&quot;Client authentication failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L26">        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleUserExists(UserAlreadyExistsException ex) {
+<span class="nc" id="L31">        log.info(&quot;Registration conflict: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L32">        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidCredentials(InvalidCredentialsException ex) {
+<span class="nc" id="L37">        log.warn(&quot;User authentication failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L38">        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleAccountDisabled(AccountDisabledException ex) {
+<span class="nc" id="L43">        log.warn(&quot;Login attempt on disabled account: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L44">        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidToken(InvalidTokenException ex) {
+<span class="nc" id="L49">        log.warn(&quot;JWT validation failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L50">        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleNotVerifiedEmail(EmailNotVerifiedException ex) {
+<span class="nc" id="L55">        log.warn(&quot;Authentication blocked (Email not verified): {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L56">        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidOAuthStateException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidOAuthState(InvalidOAuthStateException ex) {
+<span class="nc" id="L61">        log.warn(&quot;OAuth state validation failed (Potential CSRF): {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L62">        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidation(MethodArgumentNotValidException ex) {
+<span class="fc" id="L67">        String message = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L68">                .map(f -&gt;</span>
+<span class="fc" id="L69">                        f.getField() + &quot;: &quot; + f.getDefaultMessage())</span>
+<span class="fc" id="L70">                .collect(Collectors.joining(&quot;, &quot;));</span>
+<span class="fc" id="L71">        log.warn(&quot;Payload validation failed: {}&quot;, message);</span>
+<span class="fc" id="L72">        return buildResponse(HttpStatus.BAD_REQUEST, message);</span>
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleUserNotFound(UserNotFoundException ex) {
+<span class="nc" id="L77">        log.info(&quot;User lookup failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L78">        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(SelfLockoutException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleSelfLockout(SelfLockoutException ex) {
+<span class="nc" id="L83">        log.warn(&quot;User attempted self-lockout: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L84">        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(RoleNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleRoleNotFound(RoleNotFoundException ex) {
+<span class="nc" id="L89">        log.info(&quot;Role lookup failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L90">        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleAccessDenied(AccessDeniedException ex) {
+<span class="nc" id="L95">        log.warn(&quot;Access denied (Insufficient permissions): {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L96">        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(OAuthCodeDeserializationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthDeserialization(OAuthCodeDeserializationException ex) {
+<span class="nc" id="L101">        log.error(&quot;Internal serialization error (Deserializing OAuth code)&quot;, ex);</span>
+<span class="nc" id="L102">        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(OAuthCodeSerializationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthSerialization(OAuthCodeSerializationException ex) {
+<span class="nc" id="L107">        log.error(&quot;Internal serialization error (Serializing OAuth code)&quot;, ex);</span>
+<span class="nc" id="L108">        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidOAuthProviderException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidOAuthProvider(InvalidOAuthProviderException ex) {
+<span class="nc" id="L113">        log.warn(&quot;Invalid OAuth provider requested: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L114">        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(OAuthProviderException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleOAuthProvider(OAuthProviderException ex) {
+<span class="nc" id="L119">        log.error(&quot;External OAuth Provider communication failed&quot;, ex);</span>
+<span class="nc" id="L120">        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
+<span class="nc" id="L125">        log.warn(&quot;Password reset token invalid or expired: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L126">        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleInvalidEmailVerificationToken(InvalidEmailVerificationTokenException ex) {
+<span class="nc" id="L131">        log.warn(&quot;Email verification token invalid or expired: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L132">        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleGeneric(Exception ex) {
+<span class="nc" id="L137">        log.error(&quot;Unhandled exception occurred&quot;, ex);</span>
+<span class="nc" id="L138">        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, &quot;Something went wrong&quot;);</span>
+    }
+
+
+    private ResponseEntity&lt;ErrorResponse&gt; buildResponse(HttpStatus status, String message) {
+<span class="fc" id="L143">        ErrorResponse error = new ErrorResponse(status.value(), message, OffsetDateTime.now());</span>
+<span class="fc" id="L144">        return ResponseEntity.status(status).body(error);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

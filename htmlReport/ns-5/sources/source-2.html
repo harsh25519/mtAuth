@@ -1,0 +1,297 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > ClientControllerTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.client</a>
+</div>
+
+<h1>Coverage Summary for Class: ClientControllerTest (bdj.hkb.auth_service.client)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">ClientControllerTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (8/8)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (51/51)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.client;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.dto.ClientResponse;
+&nbsp;import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
+&nbsp;import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
+&nbsp;import bdj.hkb.auth_service.client.dto.UpdateRedirectUrlRequest;
+&nbsp;import bdj.hkb.auth_service.security.JwtFilter;
+&nbsp;import bdj.hkb.auth_service.security.JwtUtilService;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.springframework.beans.factory.annotation.Autowired;
+&nbsp;import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+&nbsp;import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+&nbsp;import org.springframework.data.domain.Page;
+&nbsp;import org.springframework.data.domain.PageImpl;
+&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import org.springframework.http.MediaType;
+&nbsp;import org.springframework.test.context.bean.override.mockito.MockitoBean;
+&nbsp;import org.springframework.test.web.servlet.MockMvc;
+&nbsp;import tools.jackson.databind.json.JsonMapper;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.List;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.mockito.ArgumentMatchers.any;
+&nbsp;import static org.mockito.ArgumentMatchers.eq;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+&nbsp;import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+&nbsp;import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+&nbsp;
+&nbsp;@WebMvcTest(
+&nbsp;        controllers = ClientController.class,
+&nbsp;        excludeAutoConfiguration = {SecurityAutoConfiguration.class} // Prevents 401 Unauthorized fallback
+&nbsp;)
+&nbsp;@AutoConfigureMockMvc(addFilters = false) // Disables standard security filters for unit testing
+<b class="fc">&nbsp;class ClientControllerTest {</b>
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private MockMvc mockMvc;
+&nbsp;
+&nbsp;    @Autowired
+&nbsp;    private JsonMapper objectMapper;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private ClientService clientService;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtUtilService jwtUtilService;
+&nbsp;
+&nbsp;    @MockitoBean
+&nbsp;    private JwtFilter jwtFilter;
+&nbsp;
+&nbsp;
+&nbsp;    // --- Constants ---
+<b class="fc">&nbsp;    private static final UUID CLIENT_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String CLIENT_NAME = &quot;Test Tenant&quot;;
+&nbsp;    private static final String REDIRECT_URL = &quot;https://tenant.app/callback&quot;;
+&nbsp;    private static final String RAW_SECRET = &quot;raw-secret-key-123&quot;;
+&nbsp;
+&nbsp;    private ClientResponse clientResponse;
+&nbsp;    private RegisterClientResponse registerClientResponse;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        clientResponse = new ClientResponse(</b>
+&nbsp;                CLIENT_ID,
+&nbsp;                CLIENT_NAME,
+<b class="fc">&nbsp;                true,</b>
+<b class="fc">&nbsp;                OffsetDateTime.now()</b>
+&nbsp;        );
+&nbsp;
+<b class="fc">&nbsp;        registerClientResponse = new RegisterClientResponse(</b>
+&nbsp;                CLIENT_NAME,
+&nbsp;                CLIENT_ID,
+&nbsp;                RAW_SECRET,
+&nbsp;                &quot;Warning: Copy this clientSecret immediately.&quot;
+&nbsp;        );
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for POST /clients/register
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /clients/register - Should return 201 Created on valid request&quot;)
+&nbsp;    void registerClient_WhenValid_ShouldReturnCreated() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(CLIENT_NAME, REDIRECT_URL);</b>
+&nbsp;
+&nbsp;        // @AuthenticationPrincipal resolves to null when filters are disabled, so we use any()
+<b class="fc">&nbsp;        when(clientService.registerClient(any(RegisterClientRequest.class), any())).thenReturn(registerClientResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/clients/register&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isCreated())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.name&quot;).value(CLIENT_NAME))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.clientId&quot;).value(CLIENT_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.clientSecret&quot;).value(RAW_SECRET));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(clientService).registerClient(any(RegisterClientRequest.class), any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;POST /clients/register - Should return 400 Bad Request if validation fails&quot;)
+&nbsp;    void registerClient_WhenInvalid_ShouldReturnBadRequest() throws Exception {
+&nbsp;        // Arrange: Missing name to trigger @Valid failure
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(&quot;&quot;, REDIRECT_URL);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(post(&quot;/clients/register&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf())</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isBadRequest());</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(clientService, never()).registerClient(any(), any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /clients/{clientId}
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /clients/{clientId} - Should return 200 OK with ClientResponse&quot;)
+&nbsp;    void getClientById_WhenValid_ShouldReturnClient() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(clientService.getActiveClientById(CLIENT_ID)).thenReturn(clientResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/clients/{clientId}&quot;, CLIENT_ID))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.id&quot;).value(CLIENT_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.name&quot;).value(CLIENT_NAME))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.isActive&quot;).value(true));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(clientService).getActiveClientById(CLIENT_ID);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for GET /clients
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;GET /clients - Should return 200 OK with paginated clients&quot;)
+&nbsp;    void getClients_WhenValid_ShouldReturnPage() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;ClientResponse&gt; pagedResponse = new PageImpl&lt;&gt;(List.of(clientResponse));</b>
+<b class="fc">&nbsp;        when(clientService.getAllClients(any(Pageable.class))).thenReturn(pagedResponse);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(get(&quot;/clients&quot;)</b>
+<b class="fc">&nbsp;                        .param(&quot;page&quot;, &quot;0&quot;)</b>
+<b class="fc">&nbsp;                        .param(&quot;size&quot;, &quot;10&quot;))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.content[0].id&quot;).value(CLIENT_ID.toString()))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.content[0].name&quot;).value(CLIENT_NAME))</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.totalElements&quot;).value(1));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(clientService).getAllClients(any(Pageable.class));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for PUT /clients/update/redirect-url
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;PUT /clients/update/redirect-url - Should return 200 OK on success&quot;)
+&nbsp;    void updateRedirectUrl_WhenValid_ShouldReturnOk() throws Exception {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String newUrl = &quot;https://new-tenant.app/callback&quot;;</b>
+<b class="fc">&nbsp;        UpdateRedirectUrlRequest request = new UpdateRedirectUrlRequest(newUrl);</b>
+&nbsp;
+<b class="fc">&nbsp;        doNothing().when(clientService).updateRedirectUrl(any(), eq(newUrl));</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        mockMvc.perform(put(&quot;/clients/update/redirect-url&quot;)</b>
+<b class="fc">&nbsp;                        .with(csrf()) // Required for PUT</b>
+<b class="fc">&nbsp;                        .contentType(MediaType.APPLICATION_JSON)</b>
+<b class="fc">&nbsp;                        .content(objectMapper.writeValueAsString(request)))</b>
+<b class="fc">&nbsp;                .andExpect(status().isOk())</b>
+<b class="fc">&nbsp;                .andExpect(jsonPath(&quot;$.message&quot;).value(&quot;Redirect URL updated successfully&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(clientService).updateRedirectUrl(any(), eq(newUrl));</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientRepositoryTest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.client</a> &gt; <span class="el_source">ClientRepositoryTest.java</span></div><h1>ClientRepositoryTest.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.client;
+
+import jakarta.persistence.PersistenceException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+@DataJpaTest
+<span class="fc" id="L21">class ClientRepositoryTest {</span>
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private ClientRepository clientRepository;
+
+    // --- Constants ---
+    private static final String ACTIVE_CLIENT_NAME = &quot;Active App&quot;;
+    private static final String INACTIVE_CLIENT_NAME = &quot;Legacy App&quot;;
+    private static final String CLIENT_SECRET = &quot;super-secret-key&quot;;
+    private static final String REDIRECT_URL = &quot;https://myapp.com/callback&quot;;
+
+    private Client activeClient;
+    private Client inactiveClient;
+
+    @BeforeEach
+    void setUp() {
+        // Arrange: Setup standard state for most tests
+<span class="fc" id="L41">        Client client1 = Client.builder()</span>
+<span class="fc" id="L42">                .name(ACTIVE_CLIENT_NAME)</span>
+<span class="fc" id="L43">                .clientSecret(CLIENT_SECRET)</span>
+<span class="fc" id="L44">                .redirectUrl(REDIRECT_URL)</span>
+<span class="fc" id="L45">                .isActive(true)</span>
+<span class="fc" id="L46">                .build();</span>
+
+<span class="fc" id="L48">        Client client2 = Client.builder()</span>
+<span class="fc" id="L49">                .name(INACTIVE_CLIENT_NAME)</span>
+<span class="fc" id="L50">                .clientSecret(CLIENT_SECRET)</span>
+<span class="fc" id="L51">                .redirectUrl(REDIRECT_URL)</span>
+<span class="fc" id="L52">                .isActive(false) // Explicitly inactive</span>
+<span class="fc" id="L53">                .build();</span>
+
+<span class="fc" id="L55">        activeClient = entityManager.persistAndFlush(client1);</span>
+<span class="fc" id="L56">        inactiveClient = entityManager.persistAndFlush(client2);</span>
+<span class="fc" id="L57">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should return client when ID exists and isActive is true&quot;)
+    void findByIdAndIsActiveTrue_WhenActive_ShouldReturnClient() {
+        // Act
+<span class="fc" id="L63">        Optional&lt;Client&gt; found = clientRepository.findByIdAndIsActiveTrue(activeClient.getId());</span>
+
+        // Assert
+<span class="fc" id="L66">        assertThat(found).isPresent();</span>
+<span class="fc" id="L67">        assertThat(found.get().getName()).isEqualTo(ACTIVE_CLIENT_NAME);</span>
+<span class="fc" id="L68">        assertThat(found.get().getIsActive()).isTrue();</span>
+<span class="fc" id="L69">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should return empty when ID exists but isActive is false&quot;)
+    void findByIdAndIsActiveTrue_WhenInactive_ShouldReturnEmpty() {
+        // Act
+<span class="fc" id="L75">        Optional&lt;Client&gt; found = clientRepository.findByIdAndIsActiveTrue(inactiveClient.getId());</span>
+
+        // Assert
+<span class="fc" id="L78">        assertThat(found).isEmpty();</span>
+<span class="fc" id="L79">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should return empty when ID does not exist&quot;)
+    void findByIdAndIsActiveTrue_WhenWrongId_ShouldReturnEmpty() {
+        // Arrange
+<span class="fc" id="L85">        UUID randomId = UUID.randomUUID();</span>
+
+        // Act
+<span class="fc" id="L88">        Optional&lt;Client&gt; found = clientRepository.findByIdAndIsActiveTrue(randomId);</span>
+
+        // Assert
+<span class="fc" id="L91">        assertThat(found).isEmpty();</span>
+<span class="fc" id="L92">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should return a paginated list of clients&quot;)
+    void findAll_WhenClientsExist_ShouldReturnPagedResult() {
+        // Arrange
+<span class="fc" id="L98">        Pageable pageable = PageRequest.of(0, 10);</span>
+
+        // Act
+<span class="fc" id="L101">        Page&lt;Client&gt; clientPage = clientRepository.findAll(pageable);</span>
+
+        // Assert
+<span class="fc" id="L104">        assertThat(clientPage.getTotalElements()).isEqualTo(3);</span>
+<span class="fc" id="L105">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should return an empty page when no clients exist&quot;)
+    void findAll_WhenNoClientsExist_ShouldReturnEmptyPage() {
+        // Arrange
+<span class="fc" id="L111">        clientRepository.deleteAll();</span>
+<span class="fc" id="L112">        Pageable pageable = PageRequest.of(0, 10);</span>
+
+        // Act
+<span class="fc" id="L115">        Page&lt;Client&gt; clientPage = clientRepository.findAll(pageable);</span>
+
+        // Assert
+<span class="fc" id="L118">        assertThat(clientPage.getTotalElements()).isZero();</span>
+<span class="fc" id="L119">        assertThat(clientPage.getContent()).isEmpty();</span>
+<span class="fc" id="L120">    }</span>
+
+    @Test
+    @DisplayName(&quot;Should throw exception when saving client without required non-null fields&quot;)
+    void save_WhenRequiredFieldMissing_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L126">        Client invalidClient = Client.builder()</span>
+<span class="fc" id="L127">                .clientSecret(CLIENT_SECRET)</span>
+<span class="fc" id="L128">                .isActive(true)</span>
+<span class="fc" id="L129">                .build();</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L132">        assertThrows(PersistenceException.class, () -&gt; {</span>
+<span class="nc" id="L133">            entityManager.persistAndFlush(invalidClient);</span>
+<span class="nc" id="L134">        });</span>
+<span class="fc" id="L135">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

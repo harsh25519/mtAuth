@@ -1,16 +1,25 @@
 spring:
   profiles:
-    active: ${SPRING_TEST_PROFILE:test}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  sql:
+    init:
+      mode: always
 
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
 
-jwt:
-  secret: 2qaf7BS4drDUvKsjPDR7flYFSkR0jBW48O8/IusbytBVqZ4KAxPrJAL0ZUc9+rXtDsWLY0vIJ+ZBSS8IpuDD0w==
-  access-expiration: 900000
-  refresh-expiration: 604800000
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: INFO
+    bdj.hkb.auth_service: INFO

@@ -1,0 +1,386 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > ClientServiceTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.client</a>
+</div>
+
+<h1>Coverage Summary for Class: ClientServiceTest (bdj.hkb.auth_service.client)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">ClientServiceTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (16/16)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (93/93)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.client;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.dto.ClientResponse;
+&nbsp;import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
+&nbsp;import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+&nbsp;import bdj.hkb.auth_service.role.UserRole;
+&nbsp;import bdj.hkb.auth_service.role.UserRoleRepository;
+&nbsp;import bdj.hkb.auth_service.security.dto.JwtPrincipal;
+&nbsp;import bdj.hkb.auth_service.user.User;
+&nbsp;import bdj.hkb.auth_service.user.UserRepository;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.junit.jupiter.api.extension.ExtendWith;
+&nbsp;import org.mockito.ArgumentCaptor;
+&nbsp;import org.mockito.Captor;
+&nbsp;import org.mockito.InjectMocks;
+&nbsp;import org.mockito.Mock;
+&nbsp;import org.mockito.junit.jupiter.MockitoExtension;
+&nbsp;import org.springframework.data.domain.Page;
+&nbsp;import org.springframework.data.domain.PageImpl;
+&nbsp;import org.springframework.data.domain.PageRequest;
+&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import org.springframework.security.access.AccessDeniedException;
+&nbsp;import org.springframework.security.crypto.password.PasswordEncoder;
+&nbsp;import org.springframework.test.util.ReflectionTestUtils;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.assertj.core.api.Assertions.assertThat;
+&nbsp;import static org.junit.jupiter.api.Assertions.assertThrows;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;
+&nbsp;@ExtendWith(MockitoExtension.class)
+<b class="fc">&nbsp;class ClientServiceTest {</b>
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private ClientRepository clientRepository;
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private PasswordEncoder passwordEncoder;
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private UserRepository userRepository;
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private UserRoleRepository userRoleRepository;
+&nbsp;
+&nbsp;    @InjectMocks
+&nbsp;    private ClientService clientService;
+&nbsp;
+&nbsp;    @Captor
+&nbsp;    private ArgumentCaptor&lt;User&gt; userCaptor;
+&nbsp;
+&nbsp;    @Captor
+&nbsp;    private ArgumentCaptor&lt;UserRole&gt; userRoleCaptor;
+&nbsp;
+&nbsp;    // --- Constants ---
+&nbsp;    private static final String MASTER_CLIENT_ID = &quot;00000000-0000-0000-0000-000000000000&quot;; // Assuming UUID format for master
+<b class="fc">&nbsp;    private static final UUID TOKEN_CLIENT_ID_MASTER = UUID.fromString(MASTER_CLIENT_ID);</b>
+<b class="fc">&nbsp;    private static final UUID TOKEN_CLIENT_ID_TENANT = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final UUID REQUESTER_USER_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final UUID SAVED_CLIENT_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String NEW_CLIENT_NAME = &quot;New Tenant App&quot;;
+&nbsp;    private static final String NEW_REDIRECT_URL = &quot;https://tenant.com/callback&quot;;
+&nbsp;    private static final String HASHED_SECRET = &quot;hashed-secret-value&quot;;
+&nbsp;
+&nbsp;    private JwtPrincipal masterPrincipal;
+&nbsp;    private JwtPrincipal tenantPrincipal;
+&nbsp;    private Client savedClient;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+<b class="fc">&nbsp;        ReflectionTestUtils.setField(clientService, &quot;masterClientId&quot;, MASTER_CLIENT_ID);</b>
+&nbsp;
+<b class="fc">&nbsp;        masterPrincipal = new JwtPrincipal(REQUESTER_USER_ID, TOKEN_CLIENT_ID_MASTER, List.of(&quot;ROLE_ADMIN&quot;));</b>
+<b class="fc">&nbsp;        tenantPrincipal = new JwtPrincipal(REQUESTER_USER_ID, TOKEN_CLIENT_ID_TENANT, List.of(&quot;ROLE_ADMIN&quot;));</b>
+&nbsp;
+<b class="fc">&nbsp;        savedClient = Client.builder()</b>
+<b class="fc">&nbsp;                .id(SAVED_CLIENT_ID)</b>
+<b class="fc">&nbsp;                .name(NEW_CLIENT_NAME)</b>
+<b class="fc">&nbsp;                .isActive(true)</b>
+<b class="fc">&nbsp;                .redirectUrl(NEW_REDIRECT_URL)</b>
+<b class="fc">&nbsp;                .createdAt(OffsetDateTime.now())</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for registerClient()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;registerClient - Should throw AccessDeniedException if requester is not Master Client&quot;)
+&nbsp;    void registerClient_WhenNotMaster_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            clientService.registerClient(request, tenantPrincipal);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).contains(&quot;Only users belonging to the main platform can create new clients&quot;);</b>
+<b class="fc">&nbsp;        verify(clientRepository, never()).saveAndFlush(any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;registerClient - Should register client and copy LOCAL user properties successfully&quot;)
+&nbsp;    void registerClient_WhenMasterAndLocalUser_ShouldRegisterSuccessfully() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</b>
+&nbsp;
+<b class="fc">&nbsp;        User localUser = User.builder()</b>
+<b class="fc">&nbsp;                .id(REQUESTER_USER_ID)</b>
+<b class="fc">&nbsp;                .email(&quot;admin@platform.com&quot;)</b>
+<b class="fc">&nbsp;                .authProvider(&quot;local&quot;)</b>
+<b class="fc">&nbsp;                .passwordHash(&quot;original-hash&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+<b class="fc">&nbsp;        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</b>
+<b class="fc">&nbsp;        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</b>
+<b class="fc">&nbsp;        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.of(localUser));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        RegisterClientResponse response = clientService.registerClient(request, masterPrincipal);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(response).isNotNull();</b>
+<b class="fc">&nbsp;        assertThat(response.name()).isEqualTo(NEW_CLIENT_NAME);</b>
+<b class="fc">&nbsp;        assertThat(response.clientId()).isEqualTo(SAVED_CLIENT_ID);</b>
+<b class="fc">&nbsp;        assertThat(response.clientSecret()).isNotBlank();</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(userRepository).save(userCaptor.capture());</b>
+<b class="fc">&nbsp;        User createdAdmin = userCaptor.getValue();</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getEmail()).isEqualTo(&quot;admin@platform.com&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getAuthProvider()).isEqualTo(&quot;local&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getPasswordHash()).isEqualTo(&quot;original-hash&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getClient()).isEqualTo(savedClient);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(userRoleRepository).save(userRoleCaptor.capture());</b>
+<b class="fc">&nbsp;        UserRole createdRole = userRoleCaptor.getValue();</b>
+<b class="fc">&nbsp;        assertThat(createdRole.getRole()).isEqualTo(&quot;ROLE_ADMIN&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdRole.getClient()).isEqualTo(savedClient);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;registerClient - Should register client and copy OAUTH user properties successfully&quot;)
+&nbsp;    void registerClient_WhenMasterAndOAuthUser_ShouldRegisterSuccessfully() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</b>
+&nbsp;
+<b class="fc">&nbsp;        User oauthUser = User.builder()</b>
+<b class="fc">&nbsp;                .id(REQUESTER_USER_ID)</b>
+<b class="fc">&nbsp;                .email(&quot;oauth@platform.com&quot;)</b>
+<b class="fc">&nbsp;                .authProvider(&quot;GOOGLE&quot;)</b>
+<b class="fc">&nbsp;                .providerId(&quot;google-123&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+<b class="fc">&nbsp;        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</b>
+<b class="fc">&nbsp;        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</b>
+<b class="fc">&nbsp;        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.of(oauthUser));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        clientService.registerClient(request, masterPrincipal);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        verify(userRepository).save(userCaptor.capture());</b>
+<b class="fc">&nbsp;        User createdAdmin = userCaptor.getValue();</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getEmail()).isEqualTo(&quot;oauth@platform.com&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getAuthProvider()).isEqualTo(&quot;GOOGLE&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getProviderId()).isEqualTo(&quot;google-123&quot;);</b>
+<b class="fc">&nbsp;        assertThat(createdAdmin.getPasswordHash()).isNull();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;registerClient - Should throw UserNotFoundException if requester ID does not exist&quot;)
+&nbsp;    void registerClient_WhenRequesterNotFound_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</b>
+&nbsp;
+<b class="fc">&nbsp;        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</b>
+<b class="fc">&nbsp;        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</b>
+<b class="fc">&nbsp;        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.empty());</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            clientService.registerClient(request, masterPrincipal);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;Requester not found&quot;);</b>
+<b class="fc">&nbsp;        verify(userRoleRepository, never()).save(any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getAllClients()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getAllClients - Should return mapped paginated clients&quot;)
+&nbsp;    void getAllClients_ShouldReturnPagedResponses() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Pageable pageable = PageRequest.of(0, 10);</b>
+<b class="fc">&nbsp;        Page&lt;Client&gt; mockPage = new PageImpl&lt;&gt;(List.of(savedClient));</b>
+<b class="fc">&nbsp;        when(clientRepository.findAll(pageable)).thenReturn(mockPage);</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        Page&lt;ClientResponse&gt; responses = clientService.getAllClients(pageable);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(responses.getTotalElements()).isEqualTo(1);</b>
+<b class="fc">&nbsp;        assertThat(responses.getContent().get(0).name()).isEqualTo(NEW_CLIENT_NAME);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getActiveClientById()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getActiveClientById - Should return ClientResponse when client is active&quot;)
+&nbsp;    void getActiveClientById_WhenExistsAndActive_ShouldReturnResponse() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(SAVED_CLIENT_ID)).thenReturn(Optional.of(savedClient));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        ClientResponse response = clientService.getActiveClientById(SAVED_CLIENT_ID);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(response).isNotNull();</b>
+<b class="fc">&nbsp;        assertThat(response.id()).isEqualTo(SAVED_CLIENT_ID);</b>
+<b class="fc">&nbsp;        assertThat(response.name()).isEqualTo(NEW_CLIENT_NAME);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getActiveClientById - Should throw ClientNotFoundException when client doesn&#39;t exist or is inactive&quot;)
+&nbsp;    void getActiveClientById_WhenNotFound_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(clientRepository.findByIdAndIsActiveTrue(SAVED_CLIENT_ID)).thenReturn(Optional.empty());</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(ClientNotFoundException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            clientService.getActiveClientById(SAVED_CLIENT_ID);</b>
+&nbsp;        });
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for updateRedirectUrl()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;updateRedirectUrl - Should update and save client when found&quot;)
+&nbsp;    void updateRedirectUrl_WhenClientExists_ShouldUpdateUrl() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        String updatedUrl = &quot;https://new-url.com/cb&quot;;</b>
+<b class="fc">&nbsp;        when(clientRepository.findById(TOKEN_CLIENT_ID_TENANT)).thenReturn(Optional.of(savedClient));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        clientService.updateRedirectUrl(tenantPrincipal, updatedUrl);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(savedClient.getRedirectUrl()).isEqualTo(updatedUrl);</b>
+<b class="fc">&nbsp;        verify(clientRepository).save(savedClient);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;updateRedirectUrl - Should throw ClientNotFoundException when client not found&quot;)
+&nbsp;    void updateRedirectUrl_WhenClientNotFound_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(clientRepository.findById(TOKEN_CLIENT_ID_TENANT)).thenReturn(Optional.empty());</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        assertThrows(ClientNotFoundException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            clientService.updateRedirectUrl(tenantPrincipal, &quot;https://new-url.com/cb&quot;);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        verify(clientRepository, never()).save(any());</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

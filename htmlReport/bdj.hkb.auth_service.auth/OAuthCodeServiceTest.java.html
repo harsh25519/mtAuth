@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OAuthCodeServiceTest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.auth</a> &gt; <span class="el_source">OAuthCodeServiceTest.java</span></div><h1>OAuthCodeServiceTest.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.auth;
+
+import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthStateException;
+import bdj.hkb.auth_service.exceptionHandler.OAuthCodeDeserializationException;
+import bdj.hkb.auth_service.exceptionHandler.OAuthCodeSerializationException;
+import bdj.hkb.auth_service.security.JwtUtilService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
+import java.time.Duration;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+<span class="fc" id="L31">class OAuthCodeServiceTest {</span>
+
+    @Mock private StringRedisTemplate redisTemplate;
+    @Mock private ValueOperations&lt;String, String&gt; valueOperations;
+    @Mock private ObjectMapper objectMapper;
+    @Mock private JwtUtilService jwtUtilService;
+
+    @InjectMocks
+    private OAuthCodeService oAuthCodeService;
+
+    // --- Constants ---
+    private static final String CODE_KEY_PREFIX = &quot;oauth:code:&quot;;
+<span class="fc" id="L43">    private static final String MOCK_AUTH_CODE = UUID.randomUUID().toString();</span>
+    private static final String MOCK_JSON_PAYLOAD = &quot;{\&quot;accessToken\&quot;:\&quot;mock-access\&quot;,\&quot;refreshToken\&quot;:\&quot;mock-refresh\&quot;,\&quot;tokenType\&quot;:\&quot;Bearer\&quot;}&quot;;
+<span class="fc" id="L45">    private static final String USER_ID = UUID.randomUUID().toString();</span>
+<span class="fc" id="L46">    private static final String CLIENT_ID = UUID.randomUUID().toString();</span>
+
+    private AuthResponse authResponse;
+
+    @BeforeEach
+    void setUp() {
+<span class="fc" id="L52">        authResponse = new AuthResponse(&quot;mock-access&quot;, &quot;mock-refresh&quot;, &quot;Bearer&quot;);</span>
+
+<span class="fc" id="L54">        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);</span>
+<span class="fc" id="L55">    }</span>
+
+    // ==========================================
+    // Tests for saveAuthResponse()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;saveAuthResponse - Should serialize to JSON, save to Redis, and return a UUID string&quot;)
+    void saveAuthResponse_WhenValid_ShouldSaveAndReturnCode() throws JsonProcessingException {
+        // Arrange
+<span class="fc" id="L65">        when(objectMapper.writeValueAsString(authResponse)).thenReturn(MOCK_JSON_PAYLOAD);</span>
+<span class="fc" id="L66">        when(jwtUtilService.extractUserId(&quot;mock-access&quot;)).thenReturn(USER_ID);</span>
+<span class="fc" id="L67">        when(jwtUtilService.extractClientId(&quot;mock-access&quot;)).thenReturn(CLIENT_ID);</span>
+
+        // Act
+<span class="fc" id="L70">        String authCode = oAuthCodeService.saveAuthResponse(authResponse);</span>
+
+        // Assert
+<span class="fc" id="L73">        assertThat(authCode).isNotBlank();</span>
+
+<span class="fc" id="L75">        verify(valueOperations).set(</span>
+<span class="fc" id="L76">                eq(CODE_KEY_PREFIX + authCode),</span>
+<span class="fc" id="L77">                eq(MOCK_JSON_PAYLOAD),</span>
+<span class="fc" id="L78">                eq(Duration.ofSeconds(35))</span>
+        );
+<span class="fc" id="L80">    }</span>
+
+    @Test
+    @DisplayName(&quot;saveAuthResponse - Should throw OAuthCodeSerializationException if Jackson fails&quot;)
+    void saveAuthResponse_WhenSerializationFails_ShouldThrowException() throws JsonProcessingException {
+        // Arrange
+<span class="fc" id="L86">        JsonProcessingException mockException = mock(JsonProcessingException.class);</span>
+<span class="fc" id="L87">        when(objectMapper.writeValueAsString(authResponse)).thenThrow(mockException);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L90">        OAuthCodeSerializationException exception = assertThrows(OAuthCodeSerializationException.class, () -&gt; {</span>
+<span class="nc" id="L91">            oAuthCodeService.saveAuthResponse(authResponse);</span>
+<span class="nc" id="L92">        });</span>
+
+<span class="fc" id="L94">        assertThat(exception.getMessage()).isEqualTo(&quot;Failed to serialize AuthResponse&quot;);</span>
+<span class="fc" id="L95">        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));</span>
+<span class="fc" id="L96">    }</span>
+
+    // ==========================================
+    // Tests for consumeAuthCode()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;consumeAuthCode - Should fetch from Redis, burn the key, deserialize, and return&quot;)
+    void consumeAuthCode_WhenValid_ShouldConsumeAndBurnKey() throws JsonProcessingException {
+        // Arrange
+<span class="fc" id="L106">        String expectedKey = CODE_KEY_PREFIX + MOCK_AUTH_CODE;</span>
+<span class="fc" id="L107">        when(valueOperations.get(expectedKey)).thenReturn(MOCK_JSON_PAYLOAD);</span>
+<span class="fc" id="L108">        when(objectMapper.readValue(MOCK_JSON_PAYLOAD, AuthResponse.class)).thenReturn(authResponse);</span>
+
+        // Act
+<span class="fc" id="L111">        AuthResponse result = oAuthCodeService.consumeAuthCode(MOCK_AUTH_CODE);</span>
+
+        // Assert
+<span class="fc" id="L114">        assertThat(result).isEqualTo(authResponse);</span>
+
+<span class="fc" id="L116">        verify(redisTemplate).delete(expectedKey);</span>
+<span class="fc" id="L117">    }</span>
+
+    @Test
+    @DisplayName(&quot;consumeAuthCode - Should throw InvalidOAuthStateException if code is not found in Redis&quot;)
+    void consumeAuthCode_WhenNotFound_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L123">        String expectedKey = CODE_KEY_PREFIX + MOCK_AUTH_CODE;</span>
+<span class="fc" id="L124">        when(valueOperations.get(expectedKey)).thenReturn(null); // Simulated expiration or invalid code</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L127">        InvalidOAuthStateException exception = assertThrows(InvalidOAuthStateException.class, () -&gt; {</span>
+<span class="nc" id="L128">            oAuthCodeService.consumeAuthCode(MOCK_AUTH_CODE);</span>
+<span class="nc" id="L129">        });</span>
+
+<span class="fc" id="L131">        assertThat(exception.getMessage()).isEqualTo(&quot;Invalid or expired authorization code&quot;);</span>
+
+<span class="fc" id="L133">        verify(redisTemplate, never()).delete(anyString());</span>
+<span class="fc" id="L134">        verifyNoInteractions(objectMapper);</span>
+<span class="fc" id="L135">    }</span>
+
+    @Test
+    @DisplayName(&quot;consumeAuthCode - Should delete key and throw OAuthCodeDeserializationException if Jackson fails&quot;)
+    void consumeAuthCode_WhenDeserializationFails_ShouldBurnKeyAndThrowException() throws JsonProcessingException {
+        // Arrange
+<span class="fc" id="L141">        String expectedKey = CODE_KEY_PREFIX + MOCK_AUTH_CODE;</span>
+<span class="fc" id="L142">        String corruptedJson = &quot;{bad-json}&quot;;</span>
+
+<span class="fc" id="L144">        when(valueOperations.get(expectedKey)).thenReturn(corruptedJson);</span>
+
+<span class="fc" id="L146">        JsonProcessingException mockException = mock(JsonProcessingException.class);</span>
+<span class="fc" id="L147">        when(objectMapper.readValue(corruptedJson, AuthResponse.class)).thenThrow(mockException);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L150">        OAuthCodeDeserializationException exception = assertThrows(OAuthCodeDeserializationException.class, () -&gt; {</span>
+<span class="nc" id="L151">            oAuthCodeService.consumeAuthCode(MOCK_AUTH_CODE);</span>
+<span class="nc" id="L152">        });</span>
+
+<span class="fc" id="L154">        assertThat(exception.getMessage()).isEqualTo(&quot;Failed to deserialize AuthResponse&quot;);</span>
+
+<span class="fc" id="L156">        verify(redisTemplate).delete(expectedKey);</span>
+<span class="fc" id="L157">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtUtilService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.security</a> &gt; <span class="el_source">JwtUtilService.java</span></div><h1>JwtUtilService.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
+
+@Service
+<span class="fc" id="L17">public class JwtUtilService {</span>
+
+    @Value(&quot;${jwt.secret}&quot;)
+    private String SECRET_KEY;
+
+    @Value(&quot;${jwt.access-expiration}&quot;)
+    private Long ACCESS_EXPIRATION_MS;
+
+    @Value(&quot;${jwt.refresh-expiration}&quot;)
+    private Long REFRESH_EXPIRATION_MS;
+
+    public String generateAccessToken(String userId, String clientId, List&lt;String&gt; roles){
+<span class="nc" id="L29">        return Jwts.builder()</span>
+<span class="nc" id="L30">                .claims()</span>
+<span class="nc" id="L31">                .add(&quot;clientId&quot;, clientId)</span>
+<span class="nc" id="L32">                .add(&quot;roles&quot;, roles)</span>
+<span class="nc" id="L33">                .add(&quot;type&quot;, &quot;access&quot;)</span>
+<span class="nc" id="L34">                .id(UUID.randomUUID().toString())   // jti — unique per token</span>
+<span class="nc" id="L35">                .subject(userId)</span>
+<span class="nc" id="L36">                .issuedAt(new Date(System.currentTimeMillis()))</span>
+<span class="nc" id="L37">                .expiration(new Date(System.currentTimeMillis() + ACCESS_EXPIRATION_MS))</span>
+<span class="nc" id="L38">                .and()</span>
+<span class="nc" id="L39">                .signWith(getSigningKey())</span>
+<span class="nc" id="L40">                .compact();</span>
+    }
+
+    // -------------------------------------------------------------------
+    // REFRESH TOKEN — new, minimal payload, longer expiry
+    // -------------------------------------------------------------------
+    public String generateRefreshToken(String userId, String clientId) {
+<span class="nc" id="L47">        return Jwts.builder()</span>
+<span class="nc" id="L48">                .claims()</span>
+<span class="nc" id="L49">                .add(&quot;type&quot;, &quot;refresh&quot;)</span>
+<span class="nc" id="L50">                .id(UUID.randomUUID().toString())</span>
+<span class="nc" id="L51">                .subject(userId)</span>
+<span class="nc" id="L52">                .add(&quot;clientId&quot;,clientId)</span>
+<span class="nc" id="L53">                .issuedAt(new Date(System.currentTimeMillis()))</span>
+<span class="nc" id="L54">                .expiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_MS))</span>
+<span class="nc" id="L55">                .and()</span>
+<span class="nc" id="L56">                .signWith(getSigningKey())</span>
+<span class="nc" id="L57">                .compact();</span>
+    }
+
+    public String extractTokenType(String token) {
+<span class="nc" id="L61">        return extractClaim(token, claims -&gt; claims.get(&quot;type&quot;, String.class));</span>
+    }
+
+    private SecretKey getSigningKey() {
+<span class="nc" id="L65">        byte[] bytesKey = Decoders.BASE64.decode(SECRET_KEY);</span>
+<span class="nc" id="L66">        return Keys.hmacShaKeyFor(bytesKey);</span>
+    }
+
+    public String extractUserId(String token) {
+<span class="nc" id="L70">        return extractClaim(token, Claims::getSubject);</span>
+    }
+
+    public String extractClientId(String token) {
+<span class="nc" id="L74">        return extractClaim(token, claims -&gt; claims.get(&quot;clientId&quot;, String.class));</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public List&lt;String&gt; extractRoles(String token) {
+<span class="nc" id="L79">        return extractClaim(token, claims -&gt; claims.get(&quot;roles&quot;, List.class));</span>
+    }
+
+    // Extract any claim
+    public &lt;T&gt; T extractClaim(String token, Function&lt;Claims, T&gt; claimsResolver) {
+<span class="nc" id="L84">        final Claims claims = extractAllClaims(token);</span>
+<span class="nc" id="L85">        return claimsResolver.apply(claims);</span>
+    }
+
+    private Claims extractAllClaims(String token) {
+<span class="nc" id="L89">        return Jwts.parser()</span>
+<span class="nc" id="L90">                .verifyWith(getSigningKey())</span>
+<span class="nc" id="L91">                .build()</span>
+<span class="nc" id="L92">                .parseSignedClaims(token)</span>
+<span class="nc" id="L93">                .getPayload();</span>
+    }
+
+    public boolean validateToken(String token) {
+        try {
+<span class="nc" id="L98">            extractAllClaims(token); // throws if invalid or expired</span>
+<span class="nc" id="L99">            return true;</span>
+<span class="nc" id="L100">        } catch (Exception e) {</span>
+<span class="nc" id="L101">            return false;</span>
+        }
+    }
+
+    private boolean isTokenExpired(String token) {
+<span class="nc" id="L106">        return extractExpiration(token).before(new Date());</span>
+    }
+
+    public Date extractExpiration(String token) {
+<span class="nc" id="L110">        return extractClaim(token, Claims::getExpiration);</span>
+    }
+
+    public String extractJti(String token) {
+<span class="nc" id="L114">        return extractClaim(token, Claims::getId);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

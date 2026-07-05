@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientServiceTest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.client</a> &gt; <span class="el_source">ClientServiceTest.java</span></div><h1>ClientServiceTest.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.client;
+
+import bdj.hkb.auth_service.client.dto.ClientResponse;
+import bdj.hkb.auth_service.client.dto.RegisterClientRequest;
+import bdj.hkb.auth_service.client.dto.RegisterClientResponse;
+import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
+import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+import bdj.hkb.auth_service.role.UserRole;
+import bdj.hkb.auth_service.role.UserRoleRepository;
+import bdj.hkb.auth_service.security.dto.JwtPrincipal;
+import bdj.hkb.auth_service.user.User;
+import bdj.hkb.auth_service.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+<span class="fc" id="L40">class ClientServiceTest {</span>
+
+    @Mock
+    private ClientRepository clientRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @InjectMocks
+    private ClientService clientService;
+
+    @Captor
+    private ArgumentCaptor&lt;User&gt; userCaptor;
+
+    @Captor
+    private ArgumentCaptor&lt;UserRole&gt; userRoleCaptor;
+
+    // --- Constants ---
+    private static final String MASTER_CLIENT_ID = &quot;00000000-0000-0000-0000-000000000000&quot;; // Assuming UUID format for master
+<span class="fc" id="L65">    private static final UUID TOKEN_CLIENT_ID_MASTER = UUID.fromString(MASTER_CLIENT_ID);</span>
+<span class="fc" id="L66">    private static final UUID TOKEN_CLIENT_ID_TENANT = UUID.randomUUID();</span>
+<span class="fc" id="L67">    private static final UUID REQUESTER_USER_ID = UUID.randomUUID();</span>
+<span class="fc" id="L68">    private static final UUID SAVED_CLIENT_ID = UUID.randomUUID();</span>
+    private static final String NEW_CLIENT_NAME = &quot;New Tenant App&quot;;
+    private static final String NEW_REDIRECT_URL = &quot;https://tenant.com/callback&quot;;
+    private static final String HASHED_SECRET = &quot;hashed-secret-value&quot;;
+
+    private JwtPrincipal masterPrincipal;
+    private JwtPrincipal tenantPrincipal;
+    private Client savedClient;
+
+    @BeforeEach
+    void setUp() {
+<span class="fc" id="L79">        ReflectionTestUtils.setField(clientService, &quot;masterClientId&quot;, MASTER_CLIENT_ID);</span>
+
+<span class="fc" id="L81">        masterPrincipal = new JwtPrincipal(REQUESTER_USER_ID, TOKEN_CLIENT_ID_MASTER, List.of(&quot;ROLE_ADMIN&quot;));</span>
+<span class="fc" id="L82">        tenantPrincipal = new JwtPrincipal(REQUESTER_USER_ID, TOKEN_CLIENT_ID_TENANT, List.of(&quot;ROLE_ADMIN&quot;));</span>
+
+<span class="fc" id="L84">        savedClient = Client.builder()</span>
+<span class="fc" id="L85">                .id(SAVED_CLIENT_ID)</span>
+<span class="fc" id="L86">                .name(NEW_CLIENT_NAME)</span>
+<span class="fc" id="L87">                .isActive(true)</span>
+<span class="fc" id="L88">                .redirectUrl(NEW_REDIRECT_URL)</span>
+<span class="fc" id="L89">                .createdAt(OffsetDateTime.now())</span>
+<span class="fc" id="L90">                .build();</span>
+<span class="fc" id="L91">    }</span>
+
+    // ==========================================
+    // Tests for registerClient()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;registerClient - Should throw AccessDeniedException if requester is not Master Client&quot;)
+    void registerClient_WhenNotMaster_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L101">        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L104">        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -&gt; {</span>
+<span class="nc" id="L105">            clientService.registerClient(request, tenantPrincipal);</span>
+<span class="nc" id="L106">        });</span>
+
+<span class="fc" id="L108">        assertThat(exception.getMessage()).contains(&quot;Only users belonging to the main platform can create new clients&quot;);</span>
+<span class="fc" id="L109">        verify(clientRepository, never()).saveAndFlush(any());</span>
+<span class="fc" id="L110">    }</span>
+
+    @Test
+    @DisplayName(&quot;registerClient - Should register client and copy LOCAL user properties successfully&quot;)
+    void registerClient_WhenMasterAndLocalUser_ShouldRegisterSuccessfully() {
+        // Arrange
+<span class="fc" id="L116">        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</span>
+
+<span class="fc" id="L118">        User localUser = User.builder()</span>
+<span class="fc" id="L119">                .id(REQUESTER_USER_ID)</span>
+<span class="fc" id="L120">                .email(&quot;admin@platform.com&quot;)</span>
+<span class="fc" id="L121">                .authProvider(&quot;local&quot;)</span>
+<span class="fc" id="L122">                .passwordHash(&quot;original-hash&quot;)</span>
+<span class="fc" id="L123">                .build();</span>
+
+<span class="fc" id="L125">        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</span>
+<span class="fc" id="L126">        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</span>
+<span class="fc" id="L127">        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.of(localUser));</span>
+
+        // Act
+<span class="fc" id="L130">        RegisterClientResponse response = clientService.registerClient(request, masterPrincipal);</span>
+
+        // Assert
+<span class="fc" id="L133">        assertThat(response).isNotNull();</span>
+<span class="fc" id="L134">        assertThat(response.name()).isEqualTo(NEW_CLIENT_NAME);</span>
+<span class="fc" id="L135">        assertThat(response.clientId()).isEqualTo(SAVED_CLIENT_ID);</span>
+<span class="fc" id="L136">        assertThat(response.clientSecret()).isNotBlank();</span>
+
+<span class="fc" id="L138">        verify(userRepository).save(userCaptor.capture());</span>
+<span class="fc" id="L139">        User createdAdmin = userCaptor.getValue();</span>
+<span class="fc" id="L140">        assertThat(createdAdmin.getEmail()).isEqualTo(&quot;admin@platform.com&quot;);</span>
+<span class="fc" id="L141">        assertThat(createdAdmin.getAuthProvider()).isEqualTo(&quot;local&quot;);</span>
+<span class="fc" id="L142">        assertThat(createdAdmin.getPasswordHash()).isEqualTo(&quot;original-hash&quot;);</span>
+<span class="fc" id="L143">        assertThat(createdAdmin.getClient()).isEqualTo(savedClient);</span>
+
+<span class="fc" id="L145">        verify(userRoleRepository).save(userRoleCaptor.capture());</span>
+<span class="fc" id="L146">        UserRole createdRole = userRoleCaptor.getValue();</span>
+<span class="fc" id="L147">        assertThat(createdRole.getRole()).isEqualTo(&quot;ROLE_ADMIN&quot;);</span>
+<span class="fc" id="L148">        assertThat(createdRole.getClient()).isEqualTo(savedClient);</span>
+<span class="fc" id="L149">    }</span>
+
+    @Test
+    @DisplayName(&quot;registerClient - Should register client and copy OAUTH user properties successfully&quot;)
+    void registerClient_WhenMasterAndOAuthUser_ShouldRegisterSuccessfully() {
+        // Arrange
+<span class="fc" id="L155">        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</span>
+
+<span class="fc" id="L157">        User oauthUser = User.builder()</span>
+<span class="fc" id="L158">                .id(REQUESTER_USER_ID)</span>
+<span class="fc" id="L159">                .email(&quot;oauth@platform.com&quot;)</span>
+<span class="fc" id="L160">                .authProvider(&quot;GOOGLE&quot;)</span>
+<span class="fc" id="L161">                .providerId(&quot;google-123&quot;)</span>
+<span class="fc" id="L162">                .build();</span>
+
+<span class="fc" id="L164">        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</span>
+<span class="fc" id="L165">        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</span>
+<span class="fc" id="L166">        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.of(oauthUser));</span>
+
+        // Act
+<span class="fc" id="L169">        clientService.registerClient(request, masterPrincipal);</span>
+
+        // Assert
+<span class="fc" id="L172">        verify(userRepository).save(userCaptor.capture());</span>
+<span class="fc" id="L173">        User createdAdmin = userCaptor.getValue();</span>
+<span class="fc" id="L174">        assertThat(createdAdmin.getEmail()).isEqualTo(&quot;oauth@platform.com&quot;);</span>
+<span class="fc" id="L175">        assertThat(createdAdmin.getAuthProvider()).isEqualTo(&quot;GOOGLE&quot;);</span>
+<span class="fc" id="L176">        assertThat(createdAdmin.getProviderId()).isEqualTo(&quot;google-123&quot;);</span>
+<span class="fc" id="L177">        assertThat(createdAdmin.getPasswordHash()).isNull();</span>
+<span class="fc" id="L178">    }</span>
+
+    @Test
+    @DisplayName(&quot;registerClient - Should throw UserNotFoundException if requester ID does not exist&quot;)
+    void registerClient_WhenRequesterNotFound_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L184">        RegisterClientRequest request = new RegisterClientRequest(NEW_CLIENT_NAME, NEW_REDIRECT_URL);</span>
+
+<span class="fc" id="L186">        when(passwordEncoder.encode(anyString())).thenReturn(HASHED_SECRET);</span>
+<span class="fc" id="L187">        when(clientRepository.saveAndFlush(any(Client.class))).thenReturn(savedClient);</span>
+<span class="fc" id="L188">        when(userRepository.findById(REQUESTER_USER_ID)).thenReturn(Optional.empty());</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L191">        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -&gt; {</span>
+<span class="nc" id="L192">            clientService.registerClient(request, masterPrincipal);</span>
+<span class="nc" id="L193">        });</span>
+
+<span class="fc" id="L195">        assertThat(exception.getMessage()).isEqualTo(&quot;Requester not found&quot;);</span>
+<span class="fc" id="L196">        verify(userRoleRepository, never()).save(any());</span>
+<span class="fc" id="L197">    }</span>
+
+    // ==========================================
+    // Tests for getAllClients()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;getAllClients - Should return mapped paginated clients&quot;)
+    void getAllClients_ShouldReturnPagedResponses() {
+        // Arrange
+<span class="fc" id="L207">        Pageable pageable = PageRequest.of(0, 10);</span>
+<span class="fc" id="L208">        Page&lt;Client&gt; mockPage = new PageImpl&lt;&gt;(List.of(savedClient));</span>
+<span class="fc" id="L209">        when(clientRepository.findAll(pageable)).thenReturn(mockPage);</span>
+
+        // Act
+<span class="fc" id="L212">        Page&lt;ClientResponse&gt; responses = clientService.getAllClients(pageable);</span>
+
+        // Assert
+<span class="fc" id="L215">        assertThat(responses.getTotalElements()).isEqualTo(1);</span>
+<span class="fc" id="L216">        assertThat(responses.getContent().get(0).name()).isEqualTo(NEW_CLIENT_NAME);</span>
+<span class="fc" id="L217">    }</span>
+
+    // ==========================================
+    // Tests for getActiveClientById()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;getActiveClientById - Should return ClientResponse when client is active&quot;)
+    void getActiveClientById_WhenExistsAndActive_ShouldReturnResponse() {
+        // Arrange
+<span class="fc" id="L227">        when(clientRepository.findByIdAndIsActiveTrue(SAVED_CLIENT_ID)).thenReturn(Optional.of(savedClient));</span>
+
+        // Act
+<span class="fc" id="L230">        ClientResponse response = clientService.getActiveClientById(SAVED_CLIENT_ID);</span>
+
+        // Assert
+<span class="fc" id="L233">        assertThat(response).isNotNull();</span>
+<span class="fc" id="L234">        assertThat(response.id()).isEqualTo(SAVED_CLIENT_ID);</span>
+<span class="fc" id="L235">        assertThat(response.name()).isEqualTo(NEW_CLIENT_NAME);</span>
+<span class="fc" id="L236">    }</span>
+
+    @Test
+    @DisplayName(&quot;getActiveClientById - Should throw ClientNotFoundException when client doesn't exist or is inactive&quot;)
+    void getActiveClientById_WhenNotFound_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L242">        when(clientRepository.findByIdAndIsActiveTrue(SAVED_CLIENT_ID)).thenReturn(Optional.empty());</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L245">        assertThrows(ClientNotFoundException.class, () -&gt; {</span>
+<span class="nc" id="L246">            clientService.getActiveClientById(SAVED_CLIENT_ID);</span>
+<span class="nc" id="L247">        });</span>
+<span class="fc" id="L248">    }</span>
+
+    // ==========================================
+    // Tests for updateRedirectUrl()
+    // ==========================================
+
+    @Test
+    @DisplayName(&quot;updateRedirectUrl - Should update and save client when found&quot;)
+    void updateRedirectUrl_WhenClientExists_ShouldUpdateUrl() {
+        // Arrange
+<span class="fc" id="L258">        String updatedUrl = &quot;https://new-url.com/cb&quot;;</span>
+<span class="fc" id="L259">        when(clientRepository.findById(TOKEN_CLIENT_ID_TENANT)).thenReturn(Optional.of(savedClient));</span>
+
+        // Act
+<span class="fc" id="L262">        clientService.updateRedirectUrl(tenantPrincipal, updatedUrl);</span>
+
+        // Assert
+<span class="fc" id="L265">        assertThat(savedClient.getRedirectUrl()).isEqualTo(updatedUrl);</span>
+<span class="fc" id="L266">        verify(clientRepository).save(savedClient);</span>
+<span class="fc" id="L267">    }</span>
+
+    @Test
+    @DisplayName(&quot;updateRedirectUrl - Should throw ClientNotFoundException when client not found&quot;)
+    void updateRedirectUrl_WhenClientNotFound_ShouldThrowException() {
+        // Arrange
+<span class="fc" id="L273">        when(clientRepository.findById(TOKEN_CLIENT_ID_TENANT)).thenReturn(Optional.empty());</span>
+
+        // Act &amp; Assert
+<span class="fc" id="L276">        assertThrows(ClientNotFoundException.class, () -&gt; {</span>
+<span class="nc" id="L277">            clientService.updateRedirectUrl(tenantPrincipal, &quot;https://new-url.com/cb&quot;);</span>
+<span class="nc" id="L278">        });</span>
+
+<span class="fc" id="L280">        verify(clientRepository, never()).save(any());</span>
+<span class="fc" id="L281">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

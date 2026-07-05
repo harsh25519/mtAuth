@@ -1,0 +1,296 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > UserRoleService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.role</a>
+</div>
+
+<h1>Coverage Summary for Class: UserRoleService (bdj.hkb.auth_service.role)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">UserRoleService</td>
+<td class="coverageStat">
+  <span class="percent">
+    20%
+  </span>
+  <span class="absValue">
+    (1/5)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/18)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    4.5%
+  </span>
+  <span class="absValue">
+    (3/67)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">UserRoleService$$SpringCGLIB$$0</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    20%
+  </span>
+  <span class="absValue">
+    (1/5)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/18)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    4.5%
+  </span>
+  <span class="absValue">
+    (3/67)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.role;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.AccessDeniedException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.RoleNotFoundException;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+&nbsp;import bdj.hkb.auth_service.role.dto.AssignRoleRequest;
+&nbsp;import bdj.hkb.auth_service.role.dto.RevokeRoleRequest;
+&nbsp;import bdj.hkb.auth_service.security.dto.JwtPrincipal;
+&nbsp;import bdj.hkb.auth_service.user.User;
+&nbsp;import bdj.hkb.auth_service.user.UserRepository;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;import org.springframework.transaction.annotation.Transactional;
+&nbsp;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Set;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;public class UserRoleService {
+&nbsp;
+&nbsp;    private static final String ROLE_AUTH_ADMIN = &quot;ROLE_AUTH_ADMIN&quot;;
+&nbsp;    private static final String ROLE_CLIENT_ADMIN = &quot;ROLE_ADMIN&quot;;
+<b class="fc">&nbsp;    private static final Set&lt;String&gt; LOCKOUT_PROTECTED_ROLES =</b>
+<b class="fc">&nbsp;            Set.of(ROLE_AUTH_ADMIN, ROLE_CLIENT_ADMIN);</b>
+&nbsp;
+&nbsp;    private final UserRepository userRepository;
+&nbsp;    private final UserRoleRepository userRoleRepository;
+&nbsp;
+&nbsp;    @Transactional
+&nbsp;    public void assignRole(AssignRoleRequest request, JwtPrincipal principal) {
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;User {} requested assignment of role {} to user {} in client {}&quot;,
+<b class="nc">&nbsp;                principal.userId(),</b>
+<b class="nc">&nbsp;                request.role(),</b>
+<b class="nc">&nbsp;                request.userId(),</b>
+<b class="nc">&nbsp;                request.clientId()</b>
+&nbsp;        );
+&nbsp;
+<b class="nc">&nbsp;        authorizeRoleChange(request.clientId(), principal);</b>
+&nbsp;
+<b class="nc">&nbsp;        String normalizedRole = normalizeRole(request.role());</b>
+&nbsp;
+&nbsp;        // Privilege escalation guard — only a platform admin can grant platform-admin
+<b class="nc">&nbsp;        if (normalizedRole.equals(ROLE_AUTH_ADMIN) &amp;&amp; !principal.hasRole(ROLE_AUTH_ADMIN)) {</b>
+<b class="nc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;User {} attempted to assign platform role {} without authorization&quot;,
+<b class="nc">&nbsp;                    principal.userId(),</b>
+<b class="nc">&nbsp;                    request.role()</b>
+&nbsp;            );
+<b class="nc">&nbsp;            throw new AccessDeniedException(&quot;Only a platform admin can grant &quot; + ROLE_AUTH_ADMIN);</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        User user = userRepository.findByIdAndClientId(request.userId(), request.clientId())</b>
+<b class="nc">&nbsp;                .orElseThrow(() -&gt; new UserNotFoundException(&quot;User not found for this client&quot;));</b>
+&nbsp;
+<b class="nc">&nbsp;        boolean alreadyHasRole = userRoleRepository</b>
+<b class="nc">&nbsp;                .findByUserIdAndClientId(request.userId(), request.clientId())</b>
+<b class="nc">&nbsp;                .stream()</b>
+<b class="nc">&nbsp;                .anyMatch(ur -&gt; ur.getRole().equals(normalizedRole));</b>
+&nbsp;
+<b class="nc">&nbsp;        if (alreadyHasRole) {</b>
+<b class="nc">&nbsp;            log.info(</b>
+&nbsp;                    &quot;User {} already has role {} in client {}&quot;,
+<b class="nc">&nbsp;                    request.userId(),</b>
+&nbsp;                    normalizedRole,
+<b class="nc">&nbsp;                    request.clientId()</b>
+&nbsp;            );
+&nbsp;            return; // idempotent
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        UserRole newRole = UserRole.builder()</b>
+<b class="nc">&nbsp;                .user(user)</b>
+<b class="nc">&nbsp;                .client(user.getClient())</b>
+<b class="nc">&nbsp;                .role(normalizedRole)</b>
+<b class="nc">&nbsp;                .build();</b>
+&nbsp;
+<b class="nc">&nbsp;        userRoleRepository.save(newRole);</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Assigned role {} to user {} in client {} by {}&quot;,
+&nbsp;                normalizedRole,
+<b class="nc">&nbsp;                request.userId(),</b>
+<b class="nc">&nbsp;                request.clientId(),</b>
+<b class="nc">&nbsp;                principal.userId()</b>
+&nbsp;        );
+&nbsp;
+&nbsp;    }
+&nbsp;
+&nbsp;    @Transactional
+&nbsp;    public void revokeRole(RevokeRoleRequest request, JwtPrincipal principal) {
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;User {} requested revocation of role {} from user {} in client {}&quot;,
+<b class="nc">&nbsp;                principal.userId(),</b>
+<b class="nc">&nbsp;                request.role(),</b>
+<b class="nc">&nbsp;                request.userId(),</b>
+<b class="nc">&nbsp;                request.clientId()</b>
+&nbsp;        );
+&nbsp;
+<b class="nc">&nbsp;        authorizeRoleChange(request.clientId(), principal);</b>
+&nbsp;
+<b class="nc">&nbsp;        String normalizedRole = normalizeRole(request.role());</b>
+&nbsp;
+&nbsp;        // Self-lockout guard — covers both admin tiers
+<b class="nc">&nbsp;        boolean isTargetingSelf = principal.userId().equals(request.userId());</b>
+<b class="nc">&nbsp;        if (isTargetingSelf &amp;&amp; LOCKOUT_PROTECTED_ROLES.contains(normalizedRole)) {</b>
+<b class="nc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;User {} attempted to revoke their own protected role {}&quot;,
+<b class="nc">&nbsp;                    principal.userId(),</b>
+&nbsp;                    normalizedRole
+&nbsp;            );
+&nbsp;
+<b class="nc">&nbsp;            throw new AccessDeniedException(</b>
+&nbsp;                    &quot;You cannot revoke your own admin privileges. Ask another admin to do this.&quot;);
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        List&lt;UserRole&gt; roles = userRoleRepository</b>
+<b class="nc">&nbsp;                .findByUserIdAndClientId(request.userId(), request.clientId());</b>
+&nbsp;
+<b class="nc">&nbsp;        UserRole toRemove = roles.stream()</b>
+<b class="nc">&nbsp;                .filter(ur -&gt; ur.getRole().equals(normalizedRole))</b>
+<b class="nc">&nbsp;                .findFirst()</b>
+<b class="nc">&nbsp;                .orElseThrow(() -&gt; new RoleNotFoundException(</b>
+&nbsp;                        &quot;User does not have role: &quot; + normalizedRole));
+&nbsp;
+<b class="nc">&nbsp;        userRoleRepository.delete(toRemove);</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(</b>
+&nbsp;                &quot;Revoked role {} from user {} in client {} by {}&quot;,
+&nbsp;                normalizedRole,
+<b class="nc">&nbsp;                request.userId(),</b>
+<b class="nc">&nbsp;                request.clientId(),</b>
+<b class="nc">&nbsp;                principal.userId()</b>
+&nbsp;        );
+&nbsp;    }
+&nbsp;
+&nbsp;    private String normalizeRole(String rawRole) {
+<b class="nc">&nbsp;        String upperRole = rawRole.trim().toUpperCase();</b>
+<b class="nc">&nbsp;        return upperRole.startsWith(&quot;ROLE_&quot;) ? upperRole : &quot;ROLE_&quot; + upperRole;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private void authorizeRoleChange(UUID clientId, JwtPrincipal principal) {
+<b class="nc">&nbsp;        boolean isGlobalAdmin = principal.hasRole(ROLE_AUTH_ADMIN);</b>
+<b class="nc">&nbsp;        boolean isSameTenantAdmin = clientId.equals(principal.clientId())</b>
+<b class="nc">&nbsp;                &amp;&amp; principal.hasRole(ROLE_CLIENT_ADMIN);</b>
+&nbsp;
+<b class="nc">&nbsp;        if (!isGlobalAdmin &amp;&amp; !isSameTenantAdmin) {</b>
+<b class="nc">&nbsp;            log.warn(</b>
+&nbsp;                    &quot;Unauthorized role management attempt by user {} for client {}&quot;,
+<b class="nc">&nbsp;                    principal.userId(),</b>
+&nbsp;                    clientId
+&nbsp;            );
+&nbsp;
+<b class="nc">&nbsp;            throw new AccessDeniedException(&quot;You are not allowed to manage roles for this client&quot;);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

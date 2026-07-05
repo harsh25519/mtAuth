@@ -1,0 +1,233 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > SecurityConfig</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.config</a>
+</div>
+
+<h1>Coverage Summary for Class: SecurityConfig (bdj.hkb.auth_service.config)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">SecurityConfig</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (6/6)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (36/36)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$0</td>
+  </tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$FastClass$$0</td>
+  </tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$FastClass$$1</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (6/6)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (36/36)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.config;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.security.JwtFilter;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import org.springframework.context.annotation.Bean;
+&nbsp;import org.springframework.context.annotation.Configuration;
+&nbsp;import org.springframework.http.HttpMethod;
+&nbsp;import org.springframework.security.config.Customizer;
+&nbsp;import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+&nbsp;import org.springframework.security.config.http.SessionCreationPolicy;
+&nbsp;import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+&nbsp;import org.springframework.security.crypto.password.PasswordEncoder;
+&nbsp;import org.springframework.security.web.SecurityFilterChain;
+&nbsp;import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+&nbsp;import org.springframework.web.cors.CorsConfiguration;
+&nbsp;import org.springframework.web.cors.CorsConfigurationSource;
+&nbsp;import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+&nbsp;
+&nbsp;import java.util.List;
+&nbsp;
+&nbsp;@Configuration
+&nbsp;@EnableWebSecurity
+&nbsp;@EnableMethodSecurity
+&nbsp;@RequiredArgsConstructor
+&nbsp;public class SecurityConfig {
+&nbsp;
+&nbsp;    private final JwtFilter jwtFilter;
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+<b class="fc">&nbsp;        http</b>
+<b class="fc">&nbsp;                .csrf(AbstractHttpConfigurer::disable)</b>
+<b class="fc">&nbsp;                .cors(Customizer.withDefaults())</b>
+<b class="fc">&nbsp;                .sessionManagement(session -&gt; session</b>
+<b class="fc">&nbsp;                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))</b>
+&nbsp;
+<b class="fc">&nbsp;                .authorizeHttpRequests(auth -&gt; auth</b>
+&nbsp;
+&nbsp;                        // ---Swagger---
+<b class="fc">&nbsp;                        .requestMatchers(</b>
+&nbsp;                                &quot;/v3/api-docs/**&quot;,
+&nbsp;                                &quot;/swagger-ui/**&quot;,
+&nbsp;                                &quot;/swagger-ui.html&quot;,
+&nbsp;                                &quot;/swagger-resources/**&quot;,
+&nbsp;                                &quot;/webjars/**&quot;
+<b class="fc">&nbsp;                        ).permitAll()</b>
+&nbsp;
+&nbsp;                        // Auth Controller
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/auth/logout&quot;).authenticated()</b>
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/auth/**&quot;).permitAll()</b>
+&nbsp;
+&nbsp;                        // OAuth Controller
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/oauth/**&quot;).permitAll()</b>
+&nbsp;
+&nbsp;                        // Client Controller
+<b class="fc">&nbsp;                        .requestMatchers(HttpMethod.GET,&quot;/clients&quot;).hasRole(&quot;AUTH_ADMIN&quot;)</b>
+<b class="fc">&nbsp;                        .requestMatchers(HttpMethod.PUT,&quot;/clients/update/redirect-url&quot;).hasRole(&quot;ADMIN&quot;)</b>
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/clients/**&quot;).authenticated()</b>
+&nbsp;
+&nbsp;                        // User Role Controller
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/users/roles&quot;).hasAnyRole(&quot;ADMIN&quot;,&quot;AUTH_ADMIN&quot;)</b>
+&nbsp;
+&nbsp;                        // User Controller
+<b class="fc">&nbsp;                        .requestMatchers(HttpMethod.GET, &quot;/users&quot;).hasRole(&quot;AUTH_ADMIN&quot;)</b>
+<b class="fc">&nbsp;                        .requestMatchers(HttpMethod.GET, &quot;/users/client/**&quot;).hasAnyRole(&quot;ADMIN&quot;,&quot;AUTH_ADMIN&quot;)</b>
+<b class="fc">&nbsp;                        .requestMatchers(HttpMethod.GET, &quot;/users/{userId}&quot;).authenticated()</b>
+&nbsp;
+<b class="fc">&nbsp;                        .anyRequest().authenticated()</b>
+&nbsp;                )
+<b class="fc">&nbsp;                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)</b>
+<b class="fc">&nbsp;                .headers(headers -&gt; headers</b>
+<b class="fc">&nbsp;                        .frameOptions(frame -&gt; frame.sameOrigin())</b>
+<b class="fc">&nbsp;                        .xssProtection(Customizer.withDefaults())</b>
+<b class="fc">&nbsp;                        .contentTypeOptions(Customizer.withDefaults())</b>
+&nbsp;                );
+&nbsp;
+<b class="fc">&nbsp;        return http.build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public PasswordEncoder passwordEncoder(){
+<b class="fc">&nbsp;        return new BCryptPasswordEncoder(12);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public CorsConfigurationSource corsConfigurationSource() {
+<b class="fc">&nbsp;        CorsConfiguration config = new CorsConfiguration();</b>
+&nbsp;
+<b class="fc">&nbsp;        config.setAllowedOrigins(List.of(</b>
+&nbsp;                &quot;http://localhost:5173&quot;,
+&nbsp;                &quot;http://localhost:3000&quot;,
+&nbsp;                &quot;http://127.0.0.1:3000&quot;,
+&nbsp;                &quot;http://localhost:5500&quot;,
+&nbsp;                &quot;http://127.0.0.1:5500&quot;,
+&nbsp;                &quot;http://127.0.0.1:8081&quot;,
+&nbsp;                &quot;http://localhost:8081&quot;
+&nbsp;        ));
+&nbsp;
+<b class="fc">&nbsp;        config.setAllowedMethods(List.of(&quot;PUT&quot;, &quot;OPTIONS&quot;));</b>
+<b class="fc">&nbsp;        config.setAllowedHeaders(List.of(&quot;Authorization&quot;, &quot;Content-Type&quot;));</b>
+<b class="fc">&nbsp;        config.setAllowCredentials(true);</b>
+<b class="fc">&nbsp;        config.setExposedHeaders(List.of(&quot;Authorization&quot;));</b>
+<b class="fc">&nbsp;        config.setMaxAge(3600L);</b>
+&nbsp;
+<b class="fc">&nbsp;        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</b>
+<b class="fc">&nbsp;        source.registerCorsConfiguration(&quot;/**&quot;, config);</b>
+<b class="fc">&nbsp;        return source;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

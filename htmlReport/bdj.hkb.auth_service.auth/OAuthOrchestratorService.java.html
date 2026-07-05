@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OAuthOrchestratorService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.auth</a> &gt; <span class="el_source">OAuthOrchestratorService.java</span></div><h1>OAuthOrchestratorService.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.auth;
+
+
+import bdj.hkb.auth_service.auth.dto.AuthResponse;
+import bdj.hkb.auth_service.auth.dto.OAuth2UserInfo;
+import bdj.hkb.auth_service.auth.dto.OAuthExchangeRequest;
+import bdj.hkb.auth_service.auth.dto.OAuthStateContext;
+import bdj.hkb.auth_service.auth.strategy.OAuthProviderStrategy;
+import bdj.hkb.auth_service.client.Client;
+import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
+import bdj.hkb.auth_service.exceptionHandler.InvalidClientSecretException;
+import bdj.hkb.auth_service.exceptionHandler.InvalidOAuthProviderException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+<span class="fc" id="L26">@Slf4j</span>
+public class OAuthOrchestratorService {
+
+    private final ClientRepository clientRepository;
+    private final OAuthStateService stateService;
+    private final Map&lt;OAuthProvider, OAuthProviderStrategy&gt; strategyMap;
+    private final OAuthCodeService codeService;
+    private final OAuth2Service oAuth2Service;
+    private final PasswordEncoder passwordEncoder;
+
+    // Spring automatically injects all beans implementing OAuthProviderStrategy into this List
+    @Autowired
+    public OAuthOrchestratorService(
+            ClientRepository clientRepository,
+            OAuthStateService stateService,
+            List&lt;OAuthProviderStrategy&gt; strategies,
+<span class="fc" id="L42">            OAuthCodeService codeService, OAuth2Service oAuth2Service, PasswordEncoder passwordEncoder) {</span>
+<span class="fc" id="L43">        this.clientRepository = clientRepository;</span>
+<span class="fc" id="L44">        this.stateService = stateService;</span>
+        // Convert the list to a Map for O(1) instant lookups
+<span class="fc" id="L46">        this.strategyMap = strategies.stream()</span>
+<span class="fc" id="L47">                .collect(Collectors.toMap(OAuthProviderStrategy::getProvider, Function.identity()));</span>
+<span class="fc" id="L48">        this.codeService = codeService;</span>
+<span class="fc" id="L49">        this.oAuth2Service = oAuth2Service;</span>
+<span class="fc" id="L50">        this.passwordEncoder = passwordEncoder;</span>
+<span class="fc" id="L51">    }</span>
+
+    public String getAuthorizationUrl(OAuthProvider provider, UUID clientId) {
+
+<span class="fc" id="L55">        log.info(</span>
+                &quot;OAuth authorization requested for provider {} under client {}&quot;,
+                provider,
+                clientId
+        );
+
+        // 1. Validate Client
+<span class="fc" id="L62">        clientRepository.findByIdAndIsActiveTrue(clientId)</span>
+<span class="pc" id="L63">                .orElseThrow(() -&gt; new ClientNotFoundException(&quot;Invalid or inactive Client ID&quot;));</span>
+
+        // 2. Generate State (now includes the provider for security!)
+<span class="fc" id="L66">        String state = stateService.generateAndSaveState(clientId, provider);</span>
+
+        // 3. Delegate to the specific provider strategy
+<span class="fc" id="L69">        OAuthProviderStrategy strategy = strategyMap.get(provider);</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (strategy == null) {</span>
+<span class="fc" id="L71">            throw new IllegalArgumentException(&quot;No strategy configured for provider: &quot; + provider);</span>
+        }
+
+<span class="fc" id="L74">        String authUrl = strategy.buildAuthorizationUrl(state);;</span>
+<span class="fc" id="L75">        log.info(</span>
+                &quot;Generated OAuth authorization URL for provider {} under client {}&quot;,
+                provider,
+                clientId
+        );
+
+<span class="fc" id="L81">        return authUrl;</span>
+    }
+
+    // Make sure to inject OAuthCodeService and OAuth2Service into the constructor!
+
+    public String handleProviderCallback(OAuthProvider provider, String providerCode, String state) {
+<span class="fc" id="L87">        log.info(</span>
+                &quot;Received OAuth callback for provider {}&quot;,
+                provider
+        );
+
+<span class="fc" id="L92">        OAuthStateContext stateContext = stateService.validateAndConsumeState(state);</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (stateContext.provider() != provider){</span>
+<span class="fc" id="L94">            throw new InvalidOAuthProviderException(&quot;OAuth provider mismatch&quot;);</span>
+        }
+
+<span class="fc" id="L97">        log.info(</span>
+                &quot;OAuth state validated for provider {} and client {}&quot;,
+                provider,
+<span class="fc" id="L100">                stateContext.clientId()</span>
+        );
+
+<span class="fc" id="L103">        Client client = clientRepository.findByIdAndIsActiveTrue(stateContext.clientId())</span>
+<span class="pc" id="L104">                .orElseThrow(() -&gt; new ClientNotFoundException(&quot;Invalid Client ID&quot;));</span>
+
+<span class="fc" id="L106">        OAuthProviderStrategy strategy = strategyMap.get(provider);</span>
+<span class="fc" id="L107">        OAuth2UserInfo userInfo = strategy.fetchUserInfo(providerCode);</span>
+
+<span class="fc" id="L109">        AuthResponse authResponse = oAuth2Service.processOAuthUser(client, userInfo, provider);</span>
+
+<span class="fc" id="L111">        log.info(</span>
+                &quot;OAuth provider {} authenticated user {}&quot;,
+                provider,
+<span class="fc" id="L114">                userInfo.email()</span>
+        );
+
+        // Lock the JWTs in Redis for 30 seconds
+<span class="fc" id="L118">        String authCode = codeService.saveAuthResponse(authResponse);</span>
+
+<span class="fc" id="L120">        log.info(</span>
+                &quot;Generated OAuth bridge code for provider {} and client {}&quot;,
+                provider,
+<span class="fc" id="L123">                client.getId()</span>
+        );
+
+        // Construct the frontend redirect URL
+<span class="fc" id="L127">        return client.getRedirectUrl() + &quot;/oauth/callback?code=&quot; + authCode;</span>
+    }
+
+    // 2. Exchange the code for the tokens
+    public AuthResponse exchangeCodeForTokens(OAuthExchangeRequest request) {
+
+<span class="fc" id="L133">        log.info(</span>
+                &quot;OAuth token exchange requested for client {}&quot;,
+<span class="fc" id="L135">                request.clientId()</span>
+        );
+
+<span class="fc" id="L138">        Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())</span>
+<span class="pc" id="L139">                .orElseThrow(() -&gt; new RuntimeException(&quot;Invalid Client ID&quot;));</span>
+
+        // Verify the client secret (use passwordEncoder.matches if hashed)
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        if (!passwordEncoder.matches(request.clientSecret(), client.getClientSecret())) {</span>
+<span class="fc" id="L143">            throw new InvalidClientSecretException(&quot;Invalid client secret&quot;);</span>
+        }
+
+<span class="fc" id="L146">        AuthResponse response = codeService.consumeAuthCode(request.code());</span>
+
+<span class="fc" id="L148">        log.info(</span>
+                &quot;OAuth token exchange completed for client {}&quot;,
+<span class="fc" id="L150">                request.clientId()</span>
+        );
+
+        // Unlock the Redis Locker (burns the code instantly)
+<span class="fc" id="L154">        return response;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

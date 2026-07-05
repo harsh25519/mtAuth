@@ -33,4 +33,5 @@ build/
 .vscode/
 
 ### ignore the properties file ###
-src/main/resources/application.yml
+src/test/resources/application-dev.yml
+src/main/resources/application-dev.yml

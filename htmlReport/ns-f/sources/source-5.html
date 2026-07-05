@@ -1,0 +1,327 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > UserServiceTest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.user</a>
+</div>
+
+<h1>Coverage Summary for Class: UserServiceTest (bdj.hkb.auth_service.user)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">UserServiceTest</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (15/15)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (70/70)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.user;
+&nbsp;
+&nbsp;import bdj.hkb.auth_service.client.Client;
+&nbsp;import bdj.hkb.auth_service.exceptionHandler.UserNotFoundException;
+&nbsp;import bdj.hkb.auth_service.role.UserRole;
+&nbsp;import bdj.hkb.auth_service.role.UserRoleRepository;
+&nbsp;import bdj.hkb.auth_service.user.dto.UserResponse;
+&nbsp;import org.junit.jupiter.api.BeforeEach;
+&nbsp;import org.junit.jupiter.api.DisplayName;
+&nbsp;import org.junit.jupiter.api.Test;
+&nbsp;import org.junit.jupiter.api.extension.ExtendWith;
+&nbsp;import org.mockito.InjectMocks;
+&nbsp;import org.mockito.Mock;
+&nbsp;import org.mockito.junit.jupiter.MockitoExtension;
+&nbsp;import org.springframework.data.domain.Page;
+&nbsp;import org.springframework.data.domain.PageImpl;
+&nbsp;import org.springframework.data.domain.PageRequest;
+&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import org.springframework.security.access.AccessDeniedException;
+&nbsp;import org.springframework.test.util.ReflectionTestUtils;
+&nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;import static org.assertj.core.api.Assertions.assertThat;
+&nbsp;import static org.junit.jupiter.api.Assertions.assertThrows;
+&nbsp;import static org.mockito.ArgumentMatchers.any;
+&nbsp;import static org.mockito.Mockito.*;
+&nbsp;
+&nbsp;@ExtendWith(MockitoExtension.class)
+<b class="fc">&nbsp;class UserServiceTest {</b>
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private UserRepository userRepository;
+&nbsp;
+&nbsp;    @Mock
+&nbsp;    private UserRoleRepository userRoleRepository;
+&nbsp;
+&nbsp;    @InjectMocks
+&nbsp;    private UserService userService;
+&nbsp;
+&nbsp;    // --- Test Constants ---
+&nbsp;    private static final String MASTER_CLIENT_ID = &quot;master-admin-uuid-1234&quot;;
+<b class="fc">&nbsp;    private static final UUID TENANT_CLIENT_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final UUID OTHER_TENANT_CLIENT_ID = UUID.randomUUID();</b>
+<b class="fc">&nbsp;    private static final UUID USER_ID = UUID.randomUUID();</b>
+&nbsp;    private static final String EMAIL = &quot;testuser@example.com&quot;;
+&nbsp;    private static final String ROLE_NAME = &quot;ROLE_USER&quot;;
+&nbsp;
+&nbsp;    private Client tenantClient;
+&nbsp;    private User mockUser;
+&nbsp;    private UserRole mockUserRole;
+&nbsp;    private Pageable defaultPageable;
+&nbsp;
+&nbsp;    @BeforeEach
+&nbsp;    void setUp() {
+&nbsp;        // Inject the @Value property using Spring&#39;s Reflection utility
+<b class="fc">&nbsp;        ReflectionTestUtils.setField(userService, &quot;masterClientId&quot;, MASTER_CLIENT_ID);</b>
+&nbsp;
+<b class="fc">&nbsp;        defaultPageable = PageRequest.of(0, 10);</b>
+&nbsp;
+<b class="fc">&nbsp;        tenantClient = Client.builder()</b>
+<b class="fc">&nbsp;                .id(TENANT_CLIENT_ID)</b>
+<b class="fc">&nbsp;                .name(&quot;Tenant App&quot;)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+<b class="fc">&nbsp;        mockUser = User.builder()</b>
+<b class="fc">&nbsp;                .id(USER_ID)</b>
+<b class="fc">&nbsp;                .client(tenantClient)</b>
+<b class="fc">&nbsp;                .email(EMAIL)</b>
+<b class="fc">&nbsp;                .isActive(true)</b>
+<b class="fc">&nbsp;                .authProvider(&quot;LOCAL&quot;)</b>
+<b class="fc">&nbsp;                .createdAt(OffsetDateTime.now())</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;
+<b class="fc">&nbsp;        mockUserRole = UserRole.builder()</b>
+<b class="fc">&nbsp;                .id(UUID.randomUUID())</b>
+<b class="fc">&nbsp;                .user(mockUser)</b>
+<b class="fc">&nbsp;                .client(tenantClient)</b>
+<b class="fc">&nbsp;                .role(ROLE_NAME)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getAllUsers()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getAllUsers - Should return paginated users when requested by Master Admin&quot;)
+&nbsp;    void getAllUsers_WhenMasterAdmin_ShouldReturnAllUsers() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;User&gt; mockPage = new PageImpl&lt;&gt;(List.of(mockUser));</b>
+<b class="fc">&nbsp;        when(userRepository.findAllWithClient(defaultPageable)).thenReturn(mockPage);</b>
+<b class="fc">&nbsp;        when(userRoleRepository.findByUserIds(List.of(USER_ID))).thenReturn(List.of(mockUserRole));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        Page&lt;UserResponse&gt; result = userService.getAllUsers(MASTER_CLIENT_ID, defaultPageable);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result).isNotNull();</b>
+<b class="fc">&nbsp;        assertThat(result.getTotalElements()).isEqualTo(1);</b>
+&nbsp;
+<b class="fc">&nbsp;        UserResponse response = result.getContent().get(0);</b>
+<b class="fc">&nbsp;        assertThat(response.email()).isEqualTo(EMAIL); // Assuming UserResponse is a record, use .email()</b>
+<b class="fc">&nbsp;        assertThat(response.roles()).containsExactly(ROLE_NAME);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(userRepository, times(1)).findAllWithClient(defaultPageable);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getAllUsers - Should throw AccessDeniedException if not Master Admin&quot;)
+&nbsp;    void getAllUsers_WhenNotMasterAdmin_ShouldThrowException() {
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            userService.getAllUsers(TENANT_CLIENT_ID.toString(), defaultPageable);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).contains(&quot;Only platform admins can view all users globally.&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        verify(userRepository, never()).findAllWithClient(any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getUsersByClientId()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUsersByClientId - Should return users when requesting own tenant&quot;)
+&nbsp;    void getUsersByClientId_WhenOwnTenant_ShouldReturnUsers() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;User&gt; mockPage = new PageImpl&lt;&gt;(List.of(mockUser));</b>
+<b class="fc">&nbsp;        when(userRepository.findByClientIdWithClient(TENANT_CLIENT_ID, defaultPageable)).thenReturn(mockPage);</b>
+<b class="fc">&nbsp;        when(userRoleRepository.findByUserIds(List.of(USER_ID))).thenReturn(List.of(mockUserRole));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        Page&lt;UserResponse&gt; result = userService.getUsersByClientId(TENANT_CLIENT_ID, TENANT_CLIENT_ID.toString(), defaultPageable);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result.getTotalElements()).isEqualTo(1);</b>
+<b class="fc">&nbsp;        assertThat(result.getContent().get(0).email()).isEqualTo(EMAIL);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUsersByClientId - Should return users when requested by Master Admin&quot;)
+&nbsp;    void getUsersByClientId_WhenMasterAdmin_ShouldReturnUsers() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        Page&lt;User&gt; mockPage = new PageImpl&lt;&gt;(List.of(mockUser));</b>
+<b class="fc">&nbsp;        when(userRepository.findByClientIdWithClient(TENANT_CLIENT_ID, defaultPageable)).thenReturn(mockPage);</b>
+<b class="fc">&nbsp;        when(userRoleRepository.findByUserIds(List.of(USER_ID))).thenReturn(List.of(mockUserRole));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        Page&lt;UserResponse&gt; result = userService.getUsersByClientId(TENANT_CLIENT_ID, MASTER_CLIENT_ID, defaultPageable);</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result.getTotalElements()).isEqualTo(1);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUsersByClientId - Should throw AccessDeniedException for cross-tenant request&quot;)
+&nbsp;    void getUsersByClientId_WhenDifferentTenant_ShouldThrowException() {
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            userService.getUsersByClientId(TENANT_CLIENT_ID, OTHER_TENANT_CLIENT_ID.toString(), defaultPageable);</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).contains(&quot;You cannot view users belonging to another tenant&quot;);</b>
+<b class="fc">&nbsp;        verify(userRepository, never()).findByClientIdWithClient(any(), any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // ==========================================
+&nbsp;    // Tests for getUserById()
+&nbsp;    // ==========================================
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUserById - Should return mapped UserResponse when requesting user in own tenant&quot;)
+&nbsp;    void getUserById_WhenSameTenant_ShouldReturnUserResponse() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser));</b>
+<b class="fc">&nbsp;        when(userRoleRepository.findByUserIdAndClientId(USER_ID, TENANT_CLIENT_ID))</b>
+<b class="fc">&nbsp;                .thenReturn(List.of(mockUserRole));</b>
+&nbsp;
+&nbsp;        // Act
+<b class="fc">&nbsp;        UserResponse result = userService.getUserById(USER_ID, TENANT_CLIENT_ID.toString());</b>
+&nbsp;
+&nbsp;        // Assert
+<b class="fc">&nbsp;        assertThat(result).isNotNull();</b>
+<b class="fc">&nbsp;        assertThat(result.email()).isEqualTo(EMAIL);</b>
+<b class="fc">&nbsp;        assertThat(result.roles()).containsExactly(ROLE_NAME);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUserById - Should throw AccessDeniedException for cross-tenant ID guessing&quot;)
+&nbsp;    void getUserById_WhenCrossTenant_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser));</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -&gt; {</b>
+&nbsp;            // Attempting to fetch the user using a different tenant&#39;s token
+<b class="fc">&nbsp;            userService.getUserById(USER_ID, OTHER_TENANT_CLIENT_ID.toString());</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).contains(&quot;You do not have permission to view this user&#39;s details&quot;);</b>
+<b class="fc">&nbsp;        verify(userRoleRepository, never()).findByUserIdAndClientId(any(), any());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Test
+&nbsp;    @DisplayName(&quot;getUserById - Should throw UserNotFoundException when user does not exist&quot;)
+&nbsp;    void getUserById_WhenUserDoesNotExist_ShouldThrowException() {
+&nbsp;        // Arrange
+<b class="fc">&nbsp;        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());</b>
+&nbsp;
+&nbsp;        // Act &amp; Assert
+<b class="fc">&nbsp;        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -&gt; {</b>
+<b class="fc">&nbsp;            userService.getUserById(USER_ID, TENANT_CLIENT_ID.toString());</b>
+&nbsp;        });
+&nbsp;
+<b class="fc">&nbsp;        assertThat(exception.getMessage()).isEqualTo(&quot;User not found&quot;);</b>
+<b class="fc">&nbsp;        verify(userRoleRepository, never()).findByUserIdAndClientId(any(), any());</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

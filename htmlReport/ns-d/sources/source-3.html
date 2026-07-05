@@ -1,0 +1,159 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > RefreshTokenService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">bdj.hkb.auth_service.security</a>
+</div>
+
+<h1>Coverage Summary for Class: RefreshTokenService (bdj.hkb.auth_service.security)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">RefreshTokenService</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    25%
+  </span>
+  <span class="absValue">
+    (1/4)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    8.3%
+  </span>
+  <span class="absValue">
+    (1/12)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package bdj.hkb.auth_service.security;
+&nbsp;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.data.redis.core.StringRedisTemplate;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;
+&nbsp;import java.time.Duration;
+&nbsp;
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;public class RefreshTokenService {
+&nbsp;
+&nbsp;    private final StringRedisTemplate redisTemplate;
+&nbsp;    private static final String PREFIX = &quot;refresh:&quot;;
+&nbsp;
+&nbsp;    public void store(String userId, String clientId, String jti, long expirationMillis) {
+&nbsp;        try {
+<b class="nc">&nbsp;            redisTemplate.opsForValue().set(</b>
+&nbsp;                    PREFIX + userId + &quot;:&quot; + clientId,
+&nbsp;                    jti,
+<b class="nc">&nbsp;                    Duration.ofMillis(expirationMillis)</b>
+&nbsp;            );
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(</b>
+&nbsp;                    &quot;Failed to store refresh token for user {} for client {}&quot;,
+&nbsp;                    userId,
+&nbsp;                    clientId);
+<b class="nc">&nbsp;            throw new RuntimeException(e);</b>
+&nbsp;        }
+&nbsp;
+&nbsp;    }
+&nbsp;
+&nbsp;    public boolean isValid(String userId, String clientId, String jti) {
+&nbsp;        try {
+<b class="nc">&nbsp;            String storedJti = redisTemplate.opsForValue().get(PREFIX + userId + &quot;:&quot; + clientId);</b>
+<b class="nc">&nbsp;            return jti.equals(storedJti);</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(</b>
+&nbsp;                    &quot;Failed to validate refresh token&quot;
+&nbsp;            );
+<b class="nc">&nbsp;            throw new RuntimeException(e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    public void revoke(String userId, String clientId) {
+&nbsp;        try {
+<b class="nc">&nbsp;            redisTemplate.delete(PREFIX + userId + &quot;:&quot; + clientId);</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to revoke refresh token&quot;);</b>
+<b class="nc">&nbsp;            throw new RuntimeException(e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-07-05 18:40</div>
+</div>
+</body>
+</html>

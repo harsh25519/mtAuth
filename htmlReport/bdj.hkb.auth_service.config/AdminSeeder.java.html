@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminSeeder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">java in auth_service Coverage Results</a> &gt; <a href="index.source.html" class="el_package">bdj.hkb.auth_service.config</a> &gt; <span class="el_source">AdminSeeder.java</span></div><h1>AdminSeeder.java</h1><pre class="source lang-java linenums">package bdj.hkb.auth_service.config;
+
+import bdj.hkb.auth_service.client.Client;
+import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.role.UserRole;
+import bdj.hkb.auth_service.role.UserRoleRepository;
+import bdj.hkb.auth_service.user.User;
+import bdj.hkb.auth_service.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.UUID;
+
+<span class="fc" id="L19">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class AdminSeeder implements ApplicationRunner {
+
+    private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value(&quot;${platform.master-client-id}&quot;)
+    private String consoleClientId;
+
+    @Value(&quot;${platform.admin-email}&quot;)
+    private String adminEmail;
+
+    @Value(&quot;${platform.admin-password}&quot;)
+    private String adminPassword;
+
+    @Override
+    public void run(ApplicationArguments args) {
+<span class="fc" id="L40">        UUID clientUuid = UUID.fromString(consoleClientId);</span>
+
+        // seed console client if not exists
+<span class="fc" id="L43">        Client client = clientRepository.findById(clientUuid)</span>
+<span class="fc" id="L44">                .orElseGet(() -&gt; {</span>
+<span class="nc" id="L45">                    log.info(&quot;Seeding Master Console Client...&quot;);</span>
+<span class="nc" id="L46">                    return clientRepository.saveAndFlush(Client.builder()</span>
+<span class="nc" id="L47">                            .id(clientUuid)</span>
+<span class="nc" id="L48">                            .name(&quot;auth-console&quot;)</span>
+<span class="nc" id="L49">                            .clientSecret(passwordEncoder.encode(&quot;secret123&quot;))</span>
+<span class="nc" id="L50">                            .isActive(true)</span>
+<span class="nc" id="L51">                            .build());</span>
+                });
+
+        // seed admin user if not exists
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (!userRepository.existsByClientIdAndEmail(clientUuid, adminEmail)) {</span>
+<span class="fc" id="L56">            log.info(&quot;Seeding Initial Platform Admin: {}&quot;, adminEmail);</span>
+<span class="fc" id="L57">            User admin = userRepository.save(User.builder()</span>
+<span class="fc" id="L58">                    .client(client)</span>
+<span class="fc" id="L59">                    .email(adminEmail)</span>
+<span class="fc" id="L60">                    .passwordHash(passwordEncoder.encode(adminPassword))</span>
+<span class="fc" id="L61">                    .authProvider(&quot;local&quot;)</span>
+<span class="fc" id="L62">                    .isActive(true)</span>
+<span class="fc" id="L63">                    .build());</span>
+
+<span class="fc" id="L65">            userRoleRepository.save(UserRole.builder()</span>
+<span class="fc" id="L66">                    .user(admin)</span>
+<span class="fc" id="L67">                    .client(client)</span>
+<span class="fc" id="L68">                    .role(&quot;ROLE_AUTH_ADMIN&quot;)</span>
+<span class="fc" id="L69">                    .build());</span>
+<span class="fc" id="L70">        }else{</span>
+<span class="nc" id="L71">            log.info(&quot;Platform Admin already exists. Skipping seeding.&quot;);</span>
+        }
+<span class="fc" id="L73">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

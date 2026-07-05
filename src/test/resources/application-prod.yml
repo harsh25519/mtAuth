@@ -1,0 +1,70 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      database: ${REDIS_DB}
+      timeout: 2s
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_SECRET}
+            scope:
+              - profile
+              - email
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_SECRET}
+            scope:
+              - profile
+              - email
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${SMTP_MAIL}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  jpa:
+    show-sql: false
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+  client-secret: ${GOOGLE_SECRET}
+  redirect-uri: ${GOOGLE_CALLBACK}
+
+github:
+  client-id: ${GITHUB_CLIENT_ID}
+  client-secret: ${GITHUB_SECRET}
+  redirect-uri: ${GITHUB_CALLBACK}
+
+platform:
+  master-client-id: ${MASTER_CLIENT_ID}
+  admin-email: ${ADMIN_EMAIL}
+  admin-password: ${ADMIN_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXP}
+  refresh-expiration: ${JWT_REFRESH_EXP}
+
+auth:
+  base:
+    url: ${AUTH_BASE_URL}
+
+
