@@ -26,7 +26,7 @@ class ClientRepositoryTest {
     @Autowired
     private ClientRepository clientRepository;
 
-    // --- Constants to remove magic strings ---
+    // --- Constants ---
     private static final String ACTIVE_CLIENT_NAME = "Active App";
     private static final String INACTIVE_CLIENT_NAME = "Legacy App";
     private static final String CLIENT_SECRET = "super-secret-key";
@@ -111,7 +111,6 @@ class ClientRepositoryTest {
     @DisplayName("Should return an empty page when no clients exist")
     void findAll_WhenNoClientsExist_ShouldReturnEmptyPage() {
         // Arrange
-        // Clear the database specifically for this test
         clientRepository.deleteAll();
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -127,15 +126,12 @@ class ClientRepositoryTest {
     @DisplayName("Should throw exception when saving client without required non-null fields")
     void save_WhenRequiredFieldMissing_ShouldThrowException() {
         // Arrange
-        // Missing the 'name' and 'redirectUrl' fields which are nullable = false
         Client invalidClient = Client.builder()
                 .clientSecret(CLIENT_SECRET)
                 .isActive(true)
                 .build();
 
         // Act & Assert
-        // TestEntityManager wraps DB constraints in PersistenceException, while Spring Data wraps in DataIntegrityViolationException.
-        // We test via entityManager to catch it at the flush phase.
         assertThrows(PersistenceException.class, () -> {
             entityManager.persistAndFlush(invalidClient);
         });

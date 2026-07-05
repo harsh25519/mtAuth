@@ -51,7 +51,6 @@ class OAuthCodeServiceTest {
     void setUp() {
         authResponse = new AuthResponse("mock-access", "mock-refresh", "Bearer");
 
-        // Leniently mock opsForValue() so it doesn't throw NullPointerExceptions
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
@@ -73,7 +72,6 @@ class OAuthCodeServiceTest {
         // Assert
         assertThat(authCode).isNotBlank();
 
-        // Verify Redis was called with the correct prefix, payload, and exactly a 35-second TTL
         verify(valueOperations).set(
                 eq(CODE_KEY_PREFIX + authCode),
                 eq(MOCK_JSON_PAYLOAD),
@@ -115,7 +113,6 @@ class OAuthCodeServiceTest {
         // Assert
         assertThat(result).isEqualTo(authResponse);
 
-        // **Critical Security Check**: Ensure the key was deleted instantly
         verify(redisTemplate).delete(expectedKey);
     }
 
@@ -133,7 +130,6 @@ class OAuthCodeServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Invalid or expired authorization code");
 
-        // Ensure no attempted deletion or deserialization occurred
         verify(redisTemplate, never()).delete(anyString());
         verifyNoInteractions(objectMapper);
     }
@@ -157,7 +153,6 @@ class OAuthCodeServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Failed to deserialize AuthResponse");
 
-        // Verify that even if the JSON is corrupted, we STILL burn the key
         verify(redisTemplate).delete(expectedKey);
     }
 }

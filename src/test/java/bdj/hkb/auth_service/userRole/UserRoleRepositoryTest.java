@@ -164,7 +164,6 @@ class UserRoleRepositoryTest {
         UserRole invalidRole = UserRole.builder()
                 .user(savedUser1)
                 .client(savedClient)
-                // .role(...) intentionally omitted to test nullable = false
                 .build();
 
         // Act & Assert

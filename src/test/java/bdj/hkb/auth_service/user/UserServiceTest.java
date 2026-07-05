@@ -119,7 +119,6 @@ class UserServiceTest {
 
         assertThat(exception.getMessage()).contains("Only platform admins can view all users globally.");
 
-        // Ensure repository is never called if security check fails
         verify(userRepository, never()).findAllWithClient(any());
     }
 
@@ -195,7 +194,7 @@ class UserServiceTest {
     @DisplayName("getUserById - Should throw AccessDeniedException for cross-tenant ID guessing")
     void getUserById_WhenCrossTenant_ShouldThrowException() {
         // Arrange
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser)); // User belongs to TENANT_CLIENT_ID
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser));
 
         // Act & Assert
         AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {

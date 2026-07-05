@@ -155,7 +155,6 @@ class AuthServiceTest {
         when(userRepository.existsByClientIdAndEmail(CLIENT_ID, EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        // Simulating a race condition where existsByClientIdAndEmail returned false, but the DB still throws a unique constraint error on save
         when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("Duplicate"));
 
         // Act & Assert
@@ -179,7 +178,6 @@ class AuthServiceTest {
         when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
         when(userRoleRepository.findByUserIdAndClientId(USER_ID, CLIENT_ID)).thenReturn(List.of(userRole));
 
-        // Mocking issueTokens internals
         when(jwtUtil.generateAccessToken(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), anyList())).thenReturn(ACCESS_TOKEN);
         when(jwtUtil.generateRefreshToken(USER_ID.toString(), CLIENT_ID.toString())).thenReturn(REFRESH_TOKEN);
         when(jwtUtil.extractJti(REFRESH_TOKEN)).thenReturn(JTI);
@@ -266,7 +264,6 @@ class AuthServiceTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mockUser));
         when(userRoleRepository.findByUserIdAndClientId(USER_ID, CLIENT_ID)).thenReturn(List.of(userRole));
 
-        // Mocking issueTokens internals for the new pair
         when(jwtUtil.generateAccessToken(eq(USER_ID.toString()), eq(CLIENT_ID.toString()), anyList())).thenReturn("new-access-token");
         when(jwtUtil.generateRefreshToken(USER_ID.toString(), CLIENT_ID.toString())).thenReturn("new-refresh-token");
         when(jwtUtil.extractJti("new-refresh-token")).thenReturn("new-jti");
@@ -285,7 +282,7 @@ class AuthServiceTest {
     void refreshAccessToken_WhenWrongTokenType_ShouldThrowException() {
         // Arrange
         when(jwtUtil.validateToken(ACCESS_TOKEN)).thenReturn(true);
-        when(jwtUtil.extractTokenType(ACCESS_TOKEN)).thenReturn("access"); // Not a refresh token!
+        when(jwtUtil.extractTokenType(ACCESS_TOKEN)).thenReturn("access");
 
         // Act & Assert
         InvalidTokenException exception = assertThrows(InvalidTokenException.class, () -> authService.refreshAccessToken(ACCESS_TOKEN));
@@ -304,7 +301,6 @@ class AuthServiceTest {
         when(jwtUtil.extractJti(REFRESH_TOKEN)).thenReturn(JTI);
         when(jwtUtil.extractClientId(REFRESH_TOKEN)).thenReturn(CLIENT_ID.toString());
 
-        // Redis says it is no longer valid (revoked or overwritten)
         when(refreshTokenService.isValid(USER_ID.toString(), CLIENT_ID.toString(), JTI)).thenReturn(false);
 
         // Act & Assert

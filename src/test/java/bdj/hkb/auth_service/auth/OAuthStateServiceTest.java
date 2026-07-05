@@ -45,16 +45,13 @@ class OAuthStateServiceTest {
     private static final String MOCK_JSON_CONTEXT = "{\"clientId\":\"mock-id\",\"provider\":\"GOOGLE\",\"timestamp\":123456789}";
     private static final String MOCK_STATE = "secure-random-state-xyz";
 
-    // Use your ACTUAL enum directly
     private OAuthProvider targetProvider;
     private OAuthStateContext expectedContext;
 
     @BeforeEach
     void setUp() {
-        // Mock the ValueOperations chain to avoid NullPointerExceptions
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        // Directly use the real enum from your project
         targetProvider = OAuthProvider.GOOGLE;
         expectedContext = new OAuthStateContext(CLIENT_ID, targetProvider, System.currentTimeMillis());
     }
@@ -75,13 +72,11 @@ class OAuthStateServiceTest {
         // Assert
         assertThat(state).isNotBlank();
 
-        // 1. Verify JSON serialization was called with the correct data
         verify(objectMapper).writeValueAsString(contextCaptor.capture());
         OAuthStateContext capturedContext = contextCaptor.getValue();
         assertThat(capturedContext.clientId()).isEqualTo(CLIENT_ID);
         assertThat(capturedContext.provider()).isEqualTo(targetProvider);
 
-        // 2. Verify Redis was called with exactly a 10-minute TTL
         verify(valueOperations).set(
                 eq(STATE_KEY_PREFIX + state),
                 eq(MOCK_JSON_CONTEXT),
@@ -123,7 +118,6 @@ class OAuthStateServiceTest {
         // Assert
         assertThat(result).isEqualTo(expectedContext);
 
-        // **Critical Security Check**: Ensure the key was deleted instantly
         verify(redisTemplate).delete(expectedKey);
     }
 
@@ -141,7 +135,6 @@ class OAuthStateServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Invalid or expired OAuth state");
 
-        // Ensure no attempted deletion or deserialization occurred
         verify(redisTemplate, never()).delete(anyString());
         verifyNoInteractions(objectMapper);
     }
@@ -165,7 +158,6 @@ class OAuthStateServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Failed to deserialize state context");
 
-        // Verify that even if the JSON is corrupted, we STILL burn the key to prevent replay attempts
         verify(redisTemplate).delete(expectedKey);
     }
 }

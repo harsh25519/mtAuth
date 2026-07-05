@@ -103,7 +103,6 @@ class LocalAuthOrchestratorTest {
         });
         assertThat(exception.getMessage()).isEqualTo("Invalid Client ID");
 
-        // Verify downstream services are NEVER called
         verify(authService, never()).registerLocalUser(any());
         verify(emailService, never()).sendVerificationEmail(any(), any());
     }
@@ -134,7 +133,7 @@ class LocalAuthOrchestratorTest {
     @DisplayName("resendVerificationEmail - Should prevent spam if email is already verified")
     void resendVerificationEmail_WhenAlreadyVerified_ShouldThrowException() {
         // Arrange
-        mockUser.setIsEmailVerified(true); // User is already verified
+        mockUser.setIsEmailVerified(true);
         ResendVerificationRequest request = new ResendVerificationRequest(EMAIL, CLIENT_ID);
 
         when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));

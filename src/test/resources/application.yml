@@ -9,3 +9,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+
+jwt:
+  secret: 2qaf7BS4drDUvKsjPDR7flYFSkR0jBW48O8/IusbytBVqZ4KAxPrJAL0ZUc9+rXtDsWLY0vIJ+ZBSS8IpuDD0w==
+  access-expiration: 900000
+  refresh-expiration: 604800000

@@ -85,7 +85,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should assign role successfully and normalize input")
     void assignRole_WhenValidRequest_ShouldNormalizeAndSave() {
-        // Arrange (Fixed parameter order: userId, clientId, role)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, CLIENT_ID, "user");
 
         when(userRepository.findByIdAndClientId(TARGET_USER_ID, CLIENT_ID)).thenReturn(Optional.of(targetUser));
@@ -104,7 +104,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should return early (idempotent) if user already has the role")
     void assignRole_WhenUserAlreadyHasRole_ShouldDoNothing() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, CLIENT_ID, ROLE_USER);
         UserRole existingRole = UserRole.builder().role(ROLE_USER).build();
 
@@ -121,7 +121,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should throw exception for cross-tenant unauthorized request")
     void assignRole_WhenUnauthorizedPrincipal_ShouldThrowException() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, OTHER_CLIENT_ID, ROLE_USER);
 
         // Act & Assert
@@ -136,7 +136,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should prevent privilege escalation by tenant admin")
     void assignRole_WhenTenantAdminAssignsAuthAdmin_ShouldThrowException() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, CLIENT_ID, ROLE_AUTH_ADMIN);
 
         // Act & Assert
@@ -151,7 +151,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should allow platform admin to assign AUTH_ADMIN role")
     void assignRole_WhenGlobalAdminAssignsAuthAdmin_ShouldSucceed() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, CLIENT_ID, ROLE_AUTH_ADMIN);
 
         when(userRepository.findByIdAndClientId(TARGET_USER_ID, CLIENT_ID)).thenReturn(Optional.of(targetUser));
@@ -167,7 +167,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("assignRole - Should throw UserNotFoundException if user doesn't exist for client")
     void assignRole_WhenUserNotFound_ShouldThrowException() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         AssignRoleRequest request = new AssignRoleRequest(TARGET_USER_ID, CLIENT_ID, ROLE_USER);
         when(userRepository.findByIdAndClientId(TARGET_USER_ID, CLIENT_ID)).thenReturn(Optional.empty());
 
@@ -200,7 +200,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("revokeRole - Should throw AccessDeniedException on Self-Lockout attempt")
     void revokeRole_WhenSelfLockoutAttempted_ShouldThrowException() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         RevokeRoleRequest request = new RevokeRoleRequest(ADMIN_ID, CLIENT_ID, ROLE_ADMIN);
 
         // Act & Assert
@@ -215,7 +215,7 @@ class UserRoleServiceTest {
     @Test
     @DisplayName("revokeRole - Should allow self-revocation of non-protected roles")
     void revokeRole_WhenRevokingOwnStandardRole_ShouldSucceed() {
-        // Arrange (Fixed parameter order)
+        // Arrange
         RevokeRoleRequest request = new RevokeRoleRequest(ADMIN_ID, CLIENT_ID, ROLE_USER);
         UserRole existingStandardRole = UserRole.builder().role(ROLE_USER).build();
 

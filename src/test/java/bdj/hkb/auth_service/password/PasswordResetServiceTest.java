@@ -67,13 +67,13 @@ class PasswordResetServiceTest {
         validToken = PasswordResetToken.builder()
                 .token(VALID_TOKEN_STR)
                 .user(targetUser)
-                .expiresAt(OffsetDateTime.now().plusMinutes(10)) // Safely in the future
+                .expiresAt(OffsetDateTime.now().plusMinutes(10))
                 .build();
 
         expiredToken = PasswordResetToken.builder()
                 .token(VALID_TOKEN_STR)
                 .user(targetUser)
-                .expiresAt(OffsetDateTime.now().minusMinutes(5)) // Expired 5 minutes ago
+                .expiresAt(OffsetDateTime.now().minusMinutes(5))
                 .build();
     }
 
@@ -90,10 +90,8 @@ class PasswordResetServiceTest {
         // Assert
         assertThat(generatedToken).isNotBlank();
 
-        // 1. Verify the Highlander rule (delete existing first)
         verify(tokenRepository).deleteByUser(targetUser);
 
-        // 2. Verify the token was properly saved with a future expiration
         verify(tokenRepository).save(tokenCaptor.capture());
         PasswordResetToken savedToken = tokenCaptor.getValue();
 
@@ -117,13 +115,11 @@ class PasswordResetServiceTest {
         passwordResetService.executePasswordReset(VALID_TOKEN_STR, NEW_RAW_PASSWORD);
 
         // Assert
-        // 1. Check User State updated correctly with the newly encoded hash
         assertThat(targetUser.getPasswordHash()).isEqualTo(MOCKED_HASH);
 
-        // 2. Check Database saves/deletes occurred
         verify(passwordEncoder).encode(NEW_RAW_PASSWORD);
         verify(userRepository).save(targetUser);
-        verify(tokenRepository).delete(validToken); // Burn after reading
+        verify(tokenRepository).delete(validToken);
     }
 
     @Test
@@ -139,7 +135,6 @@ class PasswordResetServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Invalid password reset token");
 
-        // Security check: ensure no hashing or database operations occurred
         verify(passwordEncoder, never()).encode(anyString());
         verify(userRepository, never()).save(any());
         verify(tokenRepository, never()).delete(any());
@@ -158,12 +153,10 @@ class PasswordResetServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Reset token has expired. Please request a new one.");
 
-        // Security check: ensure the password was NOT hashed or saved
-        assertThat(targetUser.getPasswordHash()).isEqualTo("oldHashValue"); // Remains unchanged
+        assertThat(targetUser.getPasswordHash()).isEqualTo("oldHashValue");
         verify(passwordEncoder, never()).encode(anyString());
         verify(userRepository, never()).save(any());
 
-        // Cleanup check: ensure the dead token was deleted
         verify(tokenRepository).delete(expiredToken);
     }
 }

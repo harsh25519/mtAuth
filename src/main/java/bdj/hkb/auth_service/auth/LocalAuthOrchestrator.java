@@ -3,6 +3,7 @@ package bdj.hkb.auth_service.auth;
 import bdj.hkb.auth_service.auth.dto.LocalSignupRequest;
 import bdj.hkb.auth_service.client.Client;
 import bdj.hkb.auth_service.client.ClientRepository;
+import bdj.hkb.auth_service.exceptionHandler.ClientNotFoundException;
 import bdj.hkb.auth_service.user.User;
 import bdj.hkb.auth_service.user.UserRepository;
 import bdj.hkb.auth_service.user.emailVerification.EmailVerificationService;
@@ -34,7 +35,7 @@ public class LocalAuthOrchestrator {
 
         // 1. Fetch Client
         Client client = clientRepository.findByIdAndIsActiveTrue(request.clientId())
-                .orElseThrow(() -> new RuntimeException("Invalid Client ID"));
+                .orElseThrow(() -> new ClientNotFoundException("Invalid Client ID"));
         log.info("Starting registration for email {}", request.email());
 
         // 2. Register User (isActive=false, isEmailVerified=false)

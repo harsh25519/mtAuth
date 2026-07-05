@@ -58,7 +58,7 @@ class OAuthOrchestratorServiceTest {
         orchestratorService = new OAuthOrchestratorService(
                 clientRepository,
                 stateService,
-                List.of(googleStrategy), // Injects our mock strategy
+                List.of(googleStrategy),
                 codeService,
                 oAuth2Service,
                 passwordEncoder
@@ -118,11 +118,9 @@ class OAuthOrchestratorServiceTest {
     void handleProviderCallback_WhenValid_ShouldReturnRedirectUrl() {
         // Arrange
         long mockTimestamp = System.currentTimeMillis();
-        // Fixed: Added timestamp to match the record definition
         OAuthStateContext context = new OAuthStateContext(CLIENT_ID, OAuthProvider.GOOGLE, mockTimestamp);
         OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
 
-        // Fixed: Using the canonical record constructor instead of builder
         AuthResponse tokens = new AuthResponse("mock-access", "mock-refresh", "Bearer");
 
         when(stateService.validateAndConsumeState(STATE_STRING)).thenReturn(context);
@@ -137,7 +135,6 @@ class OAuthOrchestratorServiceTest {
         // Assert
         assertThat(redirectUrl).isEqualTo(REDIRECT_URL + "/oauth/callback?code=" + AUTH_CODE);
 
-        // Verify workflow order
         verify(googleStrategy).fetchUserInfo(PROVIDER_CODE);
         verify(oAuth2Service).processOAuthUser(mockClient, userInfo, OAuthProvider.GOOGLE);
         verify(codeService).saveAuthResponse(tokens);
@@ -148,8 +145,6 @@ class OAuthOrchestratorServiceTest {
     void handleProviderCallback_WhenProviderMismatch_ShouldThrowException() {
         // Arrange
         long mockTimestamp = System.currentTimeMillis();
-        // The state was originally generated for GITHUB, but the callback came from GOOGLE
-        // Fixed: Added timestamp
         OAuthStateContext hijackedContext = new OAuthStateContext(CLIENT_ID, OAuthProvider.GITHUB, mockTimestamp);
         when(stateService.validateAndConsumeState(STATE_STRING)).thenReturn(hijackedContext);
 
@@ -160,7 +155,6 @@ class OAuthOrchestratorServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("OAuth provider mismatch");
 
-        // Security gate check
         verify(googleStrategy, never()).fetchUserInfo(anyString());
     }
 
@@ -174,7 +168,6 @@ class OAuthOrchestratorServiceTest {
         // Arrange
         OAuthExchangeRequest request = new OAuthExchangeRequest(AUTH_CODE, CLIENT_ID, RAW_SECRET);
 
-        // Fixed: Using canonical record constructor
         AuthResponse expectedTokens = new AuthResponse("access", "refresh", "Bearer");
 
         when(clientRepository.findByIdAndIsActiveTrue(CLIENT_ID)).thenReturn(Optional.of(mockClient));
@@ -203,7 +196,6 @@ class OAuthOrchestratorServiceTest {
             orchestratorService.exchangeCodeForTokens(request);
         });
 
-        // Ensure the bridge code is never consumed if the secret is wrong
         verify(codeService, never()).consumeAuthCode(anyString());
     }
 }

@@ -133,9 +133,8 @@ class ClientServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.name()).isEqualTo(NEW_CLIENT_NAME);
         assertThat(response.clientId()).isEqualTo(SAVED_CLIENT_ID);
-        assertThat(response.clientSecret()).isNotBlank(); // Prove the raw secret was generated and returned
+        assertThat(response.clientSecret()).isNotBlank();
 
-        // Verify Local User mapping
         verify(userRepository).save(userCaptor.capture());
         User createdAdmin = userCaptor.getValue();
         assertThat(createdAdmin.getEmail()).isEqualTo("admin@platform.com");
@@ -143,7 +142,6 @@ class ClientServiceTest {
         assertThat(createdAdmin.getPasswordHash()).isEqualTo("original-hash");
         assertThat(createdAdmin.getClient()).isEqualTo(savedClient);
 
-        // Verify Role mapping
         verify(userRoleRepository).save(userRoleCaptor.capture());
         UserRole createdRole = userRoleCaptor.getValue();
         assertThat(createdRole.getRole()).isEqualTo("ROLE_ADMIN");
@@ -176,7 +174,7 @@ class ClientServiceTest {
         assertThat(createdAdmin.getEmail()).isEqualTo("oauth@platform.com");
         assertThat(createdAdmin.getAuthProvider()).isEqualTo("GOOGLE");
         assertThat(createdAdmin.getProviderId()).isEqualTo("google-123");
-        assertThat(createdAdmin.getPasswordHash()).isNull(); // OAuth users shouldn't have passwords copied
+        assertThat(createdAdmin.getPasswordHash()).isNull();
     }
 
     @Test

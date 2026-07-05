@@ -60,13 +60,13 @@ class EmailVerificationServiceTest {
         validToken = EmailVerificationToken.builder()
                 .token(VALID_TOKEN_STR)
                 .user(targetUser)
-                .expiresAt(OffsetDateTime.now().plusHours(2)) // Safely in the future
+                .expiresAt(OffsetDateTime.now().plusHours(2))
                 .build();
 
         expiredToken = EmailVerificationToken.builder()
                 .token(VALID_TOKEN_STR)
                 .user(targetUser)
-                .expiresAt(OffsetDateTime.now().minusHours(1)) // Expired 1 hour ago
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
     }
 
@@ -83,10 +83,8 @@ class EmailVerificationServiceTest {
         // Assert
         assertThat(generatedToken).isNotBlank();
 
-        // 1. Verify the Highlander rule (delete existing first)
         verify(tokenRepository).deleteByUser(targetUser);
 
-        // 2. Verify the token was properly saved with a future expiration
         verify(tokenRepository).save(tokenCaptor.capture());
         EmailVerificationToken savedToken = tokenCaptor.getValue();
 
@@ -109,13 +107,11 @@ class EmailVerificationServiceTest {
         emailVerificationService.verifyEmail(VALID_TOKEN_STR);
 
         // Assert
-        // 1. Check User State updated correctly
         assertThat(targetUser.getIsEmailVerified()).isTrue();
         assertThat(targetUser.getIsActive()).isTrue();
 
-        // 2. Check Database saves/deletes occurred
         verify(userRepository).save(targetUser);
-        verify(tokenRepository).delete(validToken); // Burn after reading
+        verify(tokenRepository).delete(validToken);
     }
 
     @Test
@@ -131,7 +127,6 @@ class EmailVerificationServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Invalid verification token");
 
-        // Security check: ensure no database operations occurred
         verify(userRepository, never()).save(any());
         verify(tokenRepository, never()).delete(any());
     }
@@ -149,11 +144,9 @@ class EmailVerificationServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("Verification token has expired. Please request a new one.");
 
-        // Security check: ensure the user was NOT verified or saved
         assertThat(targetUser.getIsEmailVerified()).isFalse();
         verify(userRepository, never()).save(any());
 
-        // Cleanup check: ensure the dead token was deleted
         verify(tokenRepository).delete(expiredToken);
     }
 }

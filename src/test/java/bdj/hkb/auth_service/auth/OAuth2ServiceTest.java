@@ -56,7 +56,6 @@ class OAuth2ServiceTest {
     void setUp() {
         mockClient = Client.builder().id(CLIENT_ID).build();
 
-        // Assuming OAuth2UserInfo is a record
         mockUserInfo = new OAuth2UserInfo(EMAIL, PROVIDER_ID);
         expectedTokens = new AuthResponse("access-token", "refresh-token", "Bearer");
 

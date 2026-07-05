@@ -27,7 +27,7 @@ class EmailVerificationTokenRepositoryTest {
     @Autowired
     private EmailVerificationTokenRepository tokenRepository;
 
-    // --- Constants for Test Data ---
+    // --- Constants ---
     private static final String VALID_TOKEN = "verify-me-12345";
     private static final String UNKNOWN_TOKEN = "invalid-token-999";
     private static final String USER_EMAIL_1 = "alice@example.com";
@@ -125,7 +125,6 @@ class EmailVerificationTokenRepositoryTest {
         Optional<EmailVerificationToken> checkToken = tokenRepository.findByToken(VALID_TOKEN);
         assertThat(checkToken).isEmpty();
 
-        // Ensure the User was NOT deleted (testing correct cascade mapping behavior)
         User checkUser = entityManager.find(User.class, userWithToken.getId());
         assertThat(checkUser).isNotNull();
     }
@@ -135,8 +134,8 @@ class EmailVerificationTokenRepositoryTest {
     void save_WhenTokenStringAlreadyExists_ShouldThrowException() {
         // Arrange
         EmailVerificationToken duplicateToken = EmailVerificationToken.builder()
-                .token(VALID_TOKEN) // Attempting to reuse the same string
-                .user(userWithoutToken) // Different user, but same token string
+                .token(VALID_TOKEN)
+                .user(userWithoutToken)
                 .expiresAt(OffsetDateTime.now().plusDays(1))
                 .build();
 
@@ -168,7 +167,7 @@ class EmailVerificationTokenRepositoryTest {
         // Arrange
         EmailVerificationToken secondTokenForSameUser = EmailVerificationToken.builder()
                 .token("a-completely-new-token-string")
-                .user(userWithToken) // This user already has `savedToken` attached
+                .user(userWithToken)
                 .expiresAt(OffsetDateTime.now().plusDays(1))
                 .build();
 

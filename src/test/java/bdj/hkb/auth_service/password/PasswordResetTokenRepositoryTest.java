@@ -64,7 +64,7 @@ class PasswordResetTokenRepositoryTest {
         PasswordResetToken token = PasswordResetToken.builder()
                 .token(VALID_TOKEN)
                 .user(userWithToken)
-                .expiresAt(OffsetDateTime.now().plusHours(1)) // Resets usually expire faster
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         savedToken = entityManager.persistAndFlush(token);
     }
@@ -104,7 +104,6 @@ class PasswordResetTokenRepositoryTest {
         Optional<PasswordResetToken> checkToken = tokenRepository.findByToken(VALID_TOKEN);
         assertThat(checkToken).isEmpty();
 
-        // Ensure the User was NOT deleted (testing correct cascade mapping behavior)
         User checkUser = entityManager.find(User.class, userWithToken.getId());
         assertThat(checkUser).isNotNull();
     }
