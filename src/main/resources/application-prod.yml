@@ -8,10 +8,11 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-      database: ${REDIS_DB}
+      username: ${REDIS_USERNAME}
       timeout: 2s
       ssl:
         enabled: true
+      password: ${REDIS_PASSWORD}
 
   security:
     oauth2:
