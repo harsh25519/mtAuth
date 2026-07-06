@@ -34,9 +34,11 @@ public class EmailService {
                 "If you did not request this, please ignore this email.");
 
         try {
+            log.info("Preparing verification email for {}", recipientEmail);
             mailSender.send(message);
+            log.info("Verification email sent to {}", recipientEmail);
         } catch (MailException e) {
-            log.error("Failed to send verification email: {}", recipientEmail, e.getMessage());
+            log.error("Failed to send verification email: {}", recipientEmail, e);
             throw new RuntimeException(e);
         }
     }
@@ -54,9 +56,11 @@ public class EmailService {
                 "If you did not request this, please ignore this email. This link will expire in 15 minutes.");
 
         try {
+            log.info("Preparing password reset email for {}", email);
             mailSender.send(message);
+            log.info("Password Reset email sent to {}", email);
         } catch (MailException e) {
-            log.error("Failed to send password reset mail: {}", email, e.getMessage());
+            log.error("Failed to send password reset mail: {}", email, e);
             throw new RuntimeException(e);
         }
 
