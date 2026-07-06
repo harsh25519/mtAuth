@@ -19,6 +19,9 @@ public class EmailService {
     @Value("${auth.base.url}")
     private String redirectUrl;
 
+    @Value("${platform.admin-email}")
+    private String from;
+
     @Async
     public void sendVerificationEmail(String recipientEmail, String token) {
 
@@ -26,6 +29,7 @@ public class EmailService {
         String verificationLink = redirectUrl + "/verify-email?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
         message.setTo(recipientEmail);
         message.setSubject("Verify your account");
         message.setText("Welcome! \n\n" +
@@ -48,6 +52,7 @@ public class EmailService {
         String resetLink = redirectUrl + "/reset-password?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
         message.setTo(email);
         message.setSubject("Password Reset Request");
         message.setText("Hello, \n\n" +

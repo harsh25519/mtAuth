@@ -34,7 +34,6 @@ spring:
     port: 2525
     username: ${BREVO_LOGIN}
     password: ${BREVO_PASSWORD}
-
     properties:
       mail:
         smtp:
