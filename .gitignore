@@ -35,3 +35,4 @@ build/
 ### ignore the properties file ###
 src/test/resources/application-dev.yml
 src/main/resources/application-dev.yml
+src/test/resources/data.sql

@@ -10,6 +10,8 @@ spring:
       port: ${REDIS_PORT}
       database: ${REDIS_DB}
       timeout: 2s
+      ssl:
+        enabled: true
 
   security:
     oauth2:

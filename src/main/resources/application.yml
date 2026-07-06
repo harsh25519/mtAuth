@@ -22,10 +22,21 @@ spring:
       max-lifetime: 600000
       keepalive-time: 0
 
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: graceful
 
 logging:
   level:
     root: INFO
     bdj.hkb.auth_service: INFO
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
