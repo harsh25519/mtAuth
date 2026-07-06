@@ -10,8 +10,7 @@ spring:
       port: ${REDIS_PORT}
       username: ${REDIS_USERNAME}
       timeout: 2s
-      ssl:
-        enabled: true
+
       password: ${REDIS_PASSWORD}
 
   security:
