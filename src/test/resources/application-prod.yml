@@ -29,10 +29,11 @@ spring:
               - email
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${SMTP_MAIL}
-    password: ${SMTP_PASSWORD}
+    host: smtp-relay.brevo.com
+    port: 2525
+    username: ${BREVO_LOGIN}
+    password: ${BREVO_PASSWORD}
+
     properties:
       mail:
         smtp:
