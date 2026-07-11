@@ -9,6 +9,8 @@ The service supports local authentication, OAuth2 login, JWT authentication, ref
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue)
 ![Redis](https://img.shields.io/badge/Redis-Cloud-red)
 
+Live API:- [mtAuth Swagger](https://mtauth.onrender.com/swagger-ui/index.html)
+
 ---
 
 
