@@ -40,3 +40,26 @@ management:
     web:
       exposure:
         include: health,info
+
+ratelimit:
+  policies:
+    LOGIN:
+      capacity: 5
+      refill: 15m
+      key-by-ip: true
+      key-by-user: true
+    SIGNUP:
+      capacity: 3
+      refill: 1h
+      key-by-ip: true
+      key-by-user: false
+    FORGOT_PASSWORD:
+      capacity: 3
+      refill: 30m
+      key-by-ip: true
+      key-by-user: true
+    REFRESH_TOKEN:
+      capacity: 30
+      refill: 15m
+      key-by-ip: true
+      key-by-user: false

@@ -1,5 +1,6 @@
 package bdj.hkb.auth_service.config;
 
+import bdj.hkb.auth_service.ratelimit.RateLimitFilter;
 import bdj.hkb.auth_service.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -73,7 +76,10 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, JwtFilter.class)
+                
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
                         .xssProtection(Customizer.withDefaults())
